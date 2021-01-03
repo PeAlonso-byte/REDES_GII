@@ -372,6 +372,8 @@ void clienteTCP(char *cliente, char *servidor)
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
 
+    
+
     // Chachito de Juanan
 
     /*
@@ -552,6 +554,57 @@ void clienteTCP(char *cliente, char *servidor)
 
    // Fin de cachito de Juanan.
 
+   /* PRUEBA COMANDO POST */
+
+
+    printf("Escribe el comando que deseas enviar al servidor: ");
+    fgets(buf, 10, stdin);
+
+    if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
+        fprintf(stderr, "%s: Connection aborted on error ",	cliente);
+		fprintf(stderr, "on send number %d\n", i);
+		exit(1);
+    }
+
+    if (shutdown(s, 1) == -1) {
+        perror(cliente);
+		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
+		exit(1);
+    }
+
+    while (i = recv(s, buf, TAM_BUFFER, 0)) {
+
+        if (i == -1) {
+            perror(cliente);
+			fprintf(stderr, "%s: error reading result\n", cliente);
+			exit(1);
+        }
+
+        while (i < TAM_BUFFER) {
+			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
+			if (j == -1) {
+                     perror(cliente);
+			         fprintf(stderr, "%s: error reading result\n", cliente);
+			         exit(1);
+               }
+			i += j;
+		}
+			// Print out message indicating the identity of this reply.
+        if (strcmp(buf, "340") == 0) { // Se puede realizar el post.
+            printf("hemos recibido 340");
+
+            
+        } else { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
+
+            
+            fprintf(stdout, "Received result number %s\n", buf);
+        }
+		
+    }
+
+   /* FIN PRUEBA COMANDO POST */
+
+    /* 
     for (i=1; i<=5; i++) {
 		*buf = i;
 		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
@@ -567,7 +620,8 @@ void clienteTCP(char *cliente, char *servidor)
 		 * have just been sent, indicating that we will not be
 		 * sending any further requests.
 		 */
-	if (shutdown(s, 1) == -1) {
+	/*
+    if (shutdown(s, 1) == -1) {
 		perror(cliente);
 		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
 		exit(1);
@@ -579,7 +633,8 @@ void clienteTCP(char *cliente, char *servidor)
 		 * after the server has sent all of its replies, and closed
 		 * its end of the connection.
 		 */
-	while (i = recv(s, buf, TAM_BUFFER, 0)) {
+	/*
+    while (i = recv(s, buf, TAM_BUFFER, 0)) {
 		if (i == -1) {
             perror(cliente);
 			fprintf(stderr, "%s: error reading result\n", cliente);
@@ -599,6 +654,7 @@ void clienteTCP(char *cliente, char *servidor)
 			 * next recv at the top of the loop will start at
 			 * the begining of the next reply.
 			 */
+        /*
 		while (i < TAM_BUFFER) {
 			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
 			if (j == -1) {
@@ -609,7 +665,7 @@ void clienteTCP(char *cliente, char *servidor)
 			i += j;
 		}
 			/* Print out message indicating the identity of this reply. */
-		fprintf(stdout, "Received result number %d\n", *buf);
+		/*fprintf(stdout, "Received result number %d\n", *buf);
 	}
 
     /* Print message indicating completion of task. */

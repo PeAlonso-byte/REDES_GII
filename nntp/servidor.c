@@ -408,8 +408,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			 */
 		sleep(1);
 		/* Send a response back to the client. */
-		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+		if (strcmp(buf, "POST\n") == 0) {
+			printf("Se ha recibido un POST\n");
+			if (send(s, "340", TAM_BUFFER, 0) != TAM_BUFFER)
 			errout(hostname);
+
+			
+		} else {
+			printf("No se ha recibido un POST\n");
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+			errout(hostname);
+		}
+		
 	}
 
 	/* The loop has terminated, because there are no
