@@ -356,7 +356,7 @@ while (n_retry > 0)
 if (n_retry == 0)
 {
     fprintf(stdout,"Unable to get response from");
-    fprintf(" %s after %d attempts.\n", servidor, RETRIES);
+    fprintf(stdout, " %s after %d attempts.\n", servidor, RETRIES);
 }
 
 } // Fin UDP
@@ -478,7 +478,7 @@ void clienteTCP(char *cliente, char *servidor)
 	 * that this program could easily be ported to a host
 	 * that does require it.
 	 */
-    fprintf("Connected to %s on port %u at %s",
+    fprintf(stdout, "Connected to %s on port %u at %s",
            servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
     // Cachito de Juanan.
@@ -609,10 +609,10 @@ void clienteTCP(char *cliente, char *servidor)
 			i += j;
 		}
 			/* Print out message indicating the identity of this reply. */
-		fprintf("Received result number %d\n", *buf);
+		fprintf(stdout, "Received result number %d\n", *buf);
 	}
 
     /* Print message indicating completion of task. */
     time(&timevar);
-    fprintf("\n\nAll done at %s", (char *)ctime(&timevar));
+    fprintf(stdout, "\n\nAll done at %s", (char *)ctime(&timevar));
 } // Fin TCP
