@@ -23,8 +23,6 @@
 #define TAM_BUFFER 10
 #define MAXHOST 128
 
-#define
-
 extern int errno;
 
 /*
@@ -310,7 +308,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int len, len1, status;
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
-
+	FILE *f;
 	struct linger linger; /* allow a lingering, graceful close; */
 						  /* used when setting SO_LINGER */
 
