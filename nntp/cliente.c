@@ -26,6 +26,7 @@ extern int errno;
 #define TIMEOUT 6
 #define MAXHOST 512
 #define TAM_BUFFER 10
+#define TAM_COMANDO 512
 
 void handler()
 {
@@ -203,7 +204,7 @@ void clienteUDP(char *cliente, char *servidor)
         exit(1);
     }
 
-    // Cachito de Juanan 
+    // Cachito de Juanan
 
     /*
     switch (fork())
@@ -298,66 +299,66 @@ default: // Father process.
 };
 */
 
-// Fin de cachito de Juanan.
+    // Fin de cachito de Juanan.
 
     n_retry = RETRIES;
 
-while (n_retry > 0)
-{
-    /* Send the request to the nameserver. */
-    if (sendto(s, "UDP", strlen("UDP"), 0, (struct sockaddr *)&servaddr_in,
-               sizeof(struct sockaddr_in)) == -1)
+    while (n_retry > 0)
     {
-        perror(cliente);
-        fprintf(stderr, "%s: unable to send request\n", cliente);
-        exit(1);
-    }
-    /* Set up a timeout so I don't hang in case the packet
+        /* Send the request to the nameserver. */
+        if (sendto(s, "UDP", strlen("UDP"), 0, (struct sockaddr *)&servaddr_in,
+                   sizeof(struct sockaddr_in)) == -1)
+        {
+            perror(cliente);
+            fprintf(stderr, "%s: unable to send request\n", cliente);
+            exit(1);
+        }
+        /* Set up a timeout so I don't hang in case the packet
 		 * gets lost.  After all, UDP does not guarantee
 		 * delivery.
 		 */
-    alarm(TIMEOUT);
-    /* Wait for the reply to come in. */
-    if (recvfrom(s, &reqaddr, sizeof(struct in_addr), 0,
-                 (struct sockaddr *)&servaddr_in, &addrlen) == -1)
-    {
-        if (errno == EINTR)
+        alarm(TIMEOUT);
+        /* Wait for the reply to come in. */
+        if (recvfrom(s, &reqaddr, sizeof(struct in_addr), 0,
+                     (struct sockaddr *)&servaddr_in, &addrlen) == -1)
         {
-            /* Alarm went off and aborted the receive.
+            if (errno == EINTR)
+            {
+                /* Alarm went off and aborted the receive.
     				 * Need to retry the request if we have
     				 * not already exceeded the retry limit.
     				 */
-            fprintf(stdout, "attempt %d (retries %d).\n", n_retry, RETRIES);
-            n_retry--;
+                fprintf(stdout, "attempt %d (retries %d).\n", n_retry, RETRIES);
+                n_retry--;
+            }
+            else
+            {
+                fprintf(stdout, "Unable to get response from");
+                exit(1);
+            }
         }
         else
         {
-            fprintf(stdout, "Unable to get response from");
-            exit(1);
+            alarm(0);
+            /* Print out response. */
+            if (reqaddr.s_addr == ADDRNOTFOUND)
+                fprintf(stdout, "Host %s unknown by nameserver %s\n", "UDP", servidor);
+            else
+            {
+                /* inet_ntop para interoperatividad con IPv6 */
+                if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL)
+                    perror(" inet_ntop \n");
+                fprintf(stdout, "Address for %s is %s\n", "UDP", hostname);
+            }
+            break;
         }
     }
-    else
-    {
-        alarm(0);
-        /* Print out response. */
-        if (reqaddr.s_addr == ADDRNOTFOUND)
-            fprintf(stdout, "Host %s unknown by nameserver %s\n", "UDP", servidor);
-        else
-        {
-            /* inet_ntop para interoperatividad con IPv6 */
-            if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL)
-                perror(" inet_ntop \n");
-            fprintf(stdout, "Address for %s is %s\n", "UDP", hostname);
-        }
-        break;
-    }
-}
 
-if (n_retry == 0)
-{
-    fprintf(stdout,"Unable to get response from");
-    fprintf(stdout, " %s after %d attempts.\n", servidor, RETRIES);
-}
+    if (n_retry == 0)
+    {
+        fprintf(stdout, "Unable to get response from");
+        fprintf(stdout, " %s after %d attempts.\n", servidor, RETRIES);
+    }
 
 } // Fin UDP
 
@@ -371,8 +372,6 @@ void clienteTCP(char *cliente, char *servidor)
     int addrlen, i, j, errcode;
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
-
-    
 
     // Chachito de Juanan
 
@@ -392,7 +391,7 @@ void clienteTCP(char *cliente, char *servidor)
     }
     */
 
-   // Fin de cachito de Juanan.
+    // Fin de cachito de Juanan.
 
     // Creamos el socket TCP local
     s = socket(AF_INET, SOCK_STREAM, 0);
@@ -443,14 +442,14 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
 
-        /* Since the connect call assigns a free address
+    /* Since the connect call assigns a free address
 		 * to the local end of this connection, let's use
 		 * getsockname to see what it assigned.  Note that
 		 * addrlen needs to be passed in as a pointer,
 		 * because getsockname returns the actual length
 		 * of the address.
-		 */   
-     addrlen = sizeof(struct sockaddr_in);
+		 */
+    addrlen = sizeof(struct sockaddr_in);
     if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
     {
         perror(cliente);
@@ -470,9 +469,9 @@ void clienteTCP(char *cliente, char *servidor)
     }
     */
 
-   // Fin de cachito de Juanan.
+    // Fin de cachito de Juanan.
 
-	/* Print out a startup message for the user. */
+    /* Print out a startup message for the user. */
     time(&timevar);
     /* The port number must be converted first to host byte
 	 * order before printing.  On most hosts, this is not
@@ -481,7 +480,7 @@ void clienteTCP(char *cliente, char *servidor)
 	 * that does require it.
 	 */
     fprintf(stdout, "Connected to %s on port %u at %s",
-           servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+            servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
     // Cachito de Juanan.
 
@@ -552,57 +551,71 @@ void clienteTCP(char *cliente, char *servidor)
     }; 
     */
 
-   // Fin de cachito de Juanan.
+    // Fin de cachito de Juanan.
 
-   /* PRUEBA COMANDO POST */
-
+    /* PRUEBA COMANDO POST */
+    char comando[TAM_COMANDO]; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
 
     printf("Escribe el comando que deseas enviar al servidor: ");
-    fgets(buf, 10, stdin);
+    fgets(comando, strlen(comando), stdin);
 
-    if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
-        fprintf(stderr, "%s: Connection aborted on error ",	cliente);
-		fprintf(stderr, "on send number %d\n", i);
-		exit(1);
+    if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+    {
+        fprintf(stderr, "%s: Connection aborted on error ", cliente);
+        fprintf(stderr, "on send number %d\n", i);
+        exit(1);
     }
 
-    if (shutdown(s, 1) == -1) {
+    if (shutdown(s, 1) == -1)
+    {
         perror(cliente);
-		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
-		exit(1);
+        fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
+        exit(1);
     }
 
-    while (i = recv(s, buf, TAM_BUFFER, 0)) {
+    /* Con este codigo de aqui se recibe la respuesta al comando POST */
+    i = recv(s, buf, TAM_BUFFER, 0);
 
-        if (i == -1) {
-            perror(cliente);
-			fprintf(stderr, "%s: error reading result\n", cliente);
-			exit(1);
+    if (i == -1)
+    {
+        perror(cliente);
+        fprintf(stderr, "%s: error reading result\n", cliente);
+        exit(1);
+    }
+
+    /* FIN RESPUESTA COMANDO POST */
+    if (strcmp(comando, "POST\n") == 0)
+    {
+        if (strcmp(buf, "340") == 0)
+        { // Se puede realizar el post.
+            printf("hemos recibido 340\n");
+
+            // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
+            while (strcmp(comando, ".\n") != 0)
+            {
+                fgets(comando, TAM_COMANDO, stdin);
+                fprintf(stdout, "Se acaba de enviar : %s\n", comando);
+                fflush(stdout);
+
+                if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                {
+                    fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                    fprintf(stderr, "on send number %d\n", i);
+                    exit(1);
+                }
+            }
         }
-
-        while (i < TAM_BUFFER) {
-			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
-			if (j == -1) {
-                     perror(cliente);
-			         fprintf(stderr, "%s: error reading result\n", cliente);
-			         exit(1);
-               }
-			i += j;
-		}
-			// Print out message indicating the identity of this reply.
-        if (strcmp(buf, "340") == 0) { // Se puede realizar el post.
-            printf("hemos recibido 340");
-
-            
-        } else { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
-
-            
+        else
+        { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
             fprintf(stdout, "Received result number %s\n", buf);
         }
-		
+    }
+    else
+    { // Aqui irian los distintos comandos
+        printf("No se ha recibido un post\n");
     }
 
-   /* FIN PRUEBA COMANDO POST */
+    /* FIN PRUEBA COMANDO POST */
 
     /* 
     for (i=1; i<=5; i++) {
@@ -620,7 +633,7 @@ void clienteTCP(char *cliente, char *servidor)
 		 * have just been sent, indicating that we will not be
 		 * sending any further requests.
 		 */
-	/*
+    /*
     if (shutdown(s, 1) == -1) {
 		perror(cliente);
 		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
@@ -633,7 +646,7 @@ void clienteTCP(char *cliente, char *servidor)
 		 * after the server has sent all of its replies, and closed
 		 * its end of the connection.
 		 */
-	/*
+    /*
     while (i = recv(s, buf, TAM_BUFFER, 0)) {
 		if (i == -1) {
             perror(cliente);
@@ -654,7 +667,7 @@ void clienteTCP(char *cliente, char *servidor)
 			 * next recv at the top of the loop will start at
 			 * the begining of the next reply.
 			 */
-        /*
+    /*
 		while (i < TAM_BUFFER) {
 			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
 			if (j == -1) {
@@ -665,7 +678,7 @@ void clienteTCP(char *cliente, char *servidor)
 			i += j;
 		}
 			/* Print out message indicating the identity of this reply. */
-		/*fprintf(stdout, "Received result number %d\n", *buf);
+    /*fprintf(stdout, "Received result number %d\n", *buf);
 	}
 
     /* Print message indicating completion of task. */

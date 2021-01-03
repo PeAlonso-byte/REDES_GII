@@ -22,6 +22,7 @@
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
 #define TAM_BUFFER 10
 #define MAXHOST 128
+#define TAM_COMANDO 512
 
 extern int errno;
 
@@ -301,16 +302,21 @@ char *argv[];
  */
 void serverTCP(int s, struct sockaddr_in clientaddr_in)
 {
-	int reqcnt = 0;			/* keeps count of number of requests */
-	char buf[TAM_BUFFER];	/* This example uses TAM_BUFFER byte messages. */
-	char hostname[MAXHOST]; /* remote host's name string */
-
+	int flagHeader = 0;		   // Tiene que valer 2 para que el header este completo.
+	int flag = 0;			   // 0 = HEADER; 1 = BODY
+	int reqcnt = 0;			   /* keeps count of number of requests */
+	char buf[TAM_BUFFER];	   /* This example uses TAM_BUFFER byte messages. */
+	char hostname[MAXHOST];	   /* remote host's name string */
+	char comando[TAM_COMANDO]; // Para recibir comandos.
 	int len, len1, status;
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
 	FILE *f;
-	struct linger linger; /* allow a lingering, graceful close; */
-						  /* used when setting SO_LINGER */
+	char header[512];
+	char body[512 * 5];			// Solo se van a poder enviar 5 lineas de body.
+	char auxPrimerasLetras[20]; // Sirve para saber las primeras letras de una cadena.
+	struct linger linger;		/* allow a lingering, graceful close; */
+								/* used when setting SO_LINGER */
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -339,7 +345,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * that this program could easily be ported to a host
 		 * that does require it.
 		 */
-	//	f = fopen("nntpd.log", "a+");	
+	//	f = fopen("nntpd.log", "a+");
 	f = fopen("prueba.txt", "a+");
 	if (f == NULL)
 	{
@@ -376,7 +382,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * how the server will know that no more requests will
 		 * follow, and the loop will be exited.
 		 */
-	while (len = recv(s, buf, TAM_BUFFER, 0))
+	while (len = recv(s, comando, TAM_COMANDO, 0))
 	{
 		if (len == -1)
 			errout(hostname); /* error from recv */
@@ -394,9 +400,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			 * next recv at the top of the loop will start at
 			 * the begining of the next request.
 			 */
-		while (len < TAM_BUFFER)
+		while (len < TAM_COMANDO)
 		{
-			len1 = recv(s, &buf[len], TAM_BUFFER - len, 0);
+			len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
 			if (len1 == -1)
 				errout(hostname);
 			len += len1;
@@ -406,20 +412,95 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		/* This sleep simulates the processing of the
 			 * request that a real server might do.
 			 */
-		sleep(1);
 		/* Send a response back to the client. */
-		if (strcmp(buf, "POST\n") == 0) {
+		if (strcmp(comando, "POST\n") == 0)
+		{
 			printf("Se ha recibido un POST\n");
-			if (send(s, "340", TAM_BUFFER, 0) != TAM_BUFFER)
-			errout(hostname);
+			strcpy(buf, "340");
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
 
-			
-		} else {
+			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
+			while (strcmp(comando, ".\n") != 0)
+			{
+				// Vamos recibiendo los comandos
+				//printf("Esperando a recibir comandos \n"); // Provoca un bucle infinito.
+				while (len = recv(s, comando, TAM_COMANDO, 0))
+				{
+					if (len == -1)
+						errout(hostname); /* error from recv */
+
+					while (len < TAM_COMANDO)
+					{
+						len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
+						if (len1 == -1)
+							errout(hostname);
+						len += len1;
+					}
+					/* Increment the request count. */
+					reqcnt++;
+					/* This sleep simulates the processing of the
+			 * request that a real server might do.
+			 */		
+					fprintf(stdout, "El comando recibido es : %s\n", comando);
+					if (strcmp(comando, "\n") == 0)
+					{
+						printf("Ha entrado en el /n \n");
+						flag = 1;
+						if (flagHeader != 2)
+						{ // Quiere decir que el header no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
+							printf("Error 441\n");
+							strcpy(buf, "441");
+							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+								errout(hostname);
+							break; // Salimos del bucle
+						}
+					}
+					if (flag == 0)
+					{ // HEADER
+						printf("Ha entrado en el header\n");
+						
+						strncpy(auxPrimerasLetras, comando, 10);
+
+						fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
+						fflush(stdout);
+
+						if (strcmp(auxPrimerasLetras, "Newsgroups") == 0 || strcmp(auxPrimerasLetras, "newsgroups") == 0)
+						{
+							strncat(header, comando, strlen(comando));
+							flagHeader++;
+						} else {
+							printf("Etiqueta erronea, envie otra\n");
+						}
+
+						strncat(header, comando, strlen(comando));
+						strncpy(auxPrimerasLetras, comando, 7);
+
+						fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
+						fflush(stdout);
+
+						if (strcmp(auxPrimerasLetras, "Subject") == 0 || strcmp(auxPrimerasLetras, "subject") == 0)
+						{
+							strncat(header, comando, strlen(comando));
+							flagHeader++;
+						}else {
+							printf("Etiqueta erronea, envie otra\n");
+						}
+					}
+					else
+					{ // Esto es el body
+						printf("Ha entrado en el body correctamente\n");
+					}
+				}
+			}
+		}
+		else
+		{
+			strcpy(buf, "440");
 			printf("No se ha recibido un POST\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-			errout(hostname);
+				errout(hostname);
 		}
-		
 	}
 
 	/* The loop has terminated, because there are no
