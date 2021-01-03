@@ -439,11 +439,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					}
 					/* Increment the request count. */
 					reqcnt++;
+					comando[len] = '\0';
 					/* This sleep simulates the processing of the
 			 * request that a real server might do.
 			 */		
-					fprintf(stdout, "El comando recibido es : %s\n", comando);
-					if (strcmp(comando, "\n") == 0)
+					fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
+					if (strcmp(comando, "\n") == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 					{
 						printf("Ha entrado en el /n \n");
 						flag = 1;

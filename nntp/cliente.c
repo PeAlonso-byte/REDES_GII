@@ -595,7 +595,7 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fgets(comando, TAM_COMANDO, stdin);
                 fprintf(stdout, "Se acaba de enviar : %s\n", comando);
-                fflush(stdout);
+                
 
                 if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
                 {
