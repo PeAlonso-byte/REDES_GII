@@ -25,6 +25,7 @@ extern int errno;
 #define PUERTO 8564
 #define TIMEOUT 6
 #define MAXHOST 512
+#define TAM_BUFFER 10
 
 void handler()
 {
@@ -81,10 +82,12 @@ void clienteUDP(char *cliente, char *servidor)
     char hostname[MAXHOST];
     struct addrinfo hints, *res;
 
+    // Cachito de Juanan
+
     //int tmp;
 
     /*FILE *entrada, *salida;
-    char buf[TAM_BUFFER];
+    char buf[BUFFERSIZE];
     char exitFileName[100];
 
     entrada = fopen(nombre_fichero, "r");
@@ -95,13 +98,16 @@ void clienteUDP(char *cliente, char *servidor)
         exit(1);
     }*/
 
+    // Fin de cachito de Juanan
+
     /* Create the socket. */
     s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to create socket\n", argv[0]);
-        exit(1)
+        perror(cliente);
+        fprintf(stderr, "%s: unable to create socket\n", cliente);
+        fflush(stderr);
+        exit(1);
     }
 
     /* clear out address structures */
@@ -121,25 +127,34 @@ void clienteUDP(char *cliente, char *servidor)
     myaddr_in.sin_addr.s_addr = INADDR_ANY;
     if (bind(s, (const struct sockaddr *)&myaddr_in, sizeof(struct sockaddr_in)) == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to bind socket\n", argv[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to bind socket\n", cliente);
+        fflush(stderr);
         exit(1);
     }
     addrlen = sizeof(struct sockaddr_in);
     if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to read socket address\n", argv[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to read socket address\n", cliente);
+        fflush(stderr);
         exit(1);
     }
 
-    /*sprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
+    // Cachito de Juanan.
+
+    /*
+    sfprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
     salida = fopen(exitFileName, "w");
     if (NULL == salida)
     {
         fprintf(stderr, "El fichero de salida no se ha podido abrir\n");
+        fflush(stderr);
         exit(1);
-    }*/
+    }
+    */
+
+    // Fin de cachito de Juanan
 
     /* Print out a startup message for the user. */
     time(&timevar);
@@ -149,7 +164,7 @@ void clienteUDP(char *cliente, char *servidor)
              * that this program could easily be ported to a host
              * that does require it.
              */
-    printf("Connected to %s on port %u at %s", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+    fprintf(stdout, "Connected to %s on port %u at %s", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
     /* Set up the server address. */
     servaddr_in.sin_family = AF_INET;
@@ -166,7 +181,7 @@ void clienteUDP(char *cliente, char *servidor)
         /* Name was not found.  Return a
                * special value signifying the error. */
         fprintf(stderr, "%s: No es posible resolver la IP de %s\n",
-                argv[0], argv[1]);
+                cliente, servidor);
         exit(1);
     }
     else
@@ -184,24 +199,26 @@ void clienteUDP(char *cliente, char *servidor)
     if (sigaction(SIGALRM, &vec, (struct sigaction *)0) == -1)
     {
         perror(" sigaction(SIGALRM)");
-        fprintf(stderr, "%s: unable to register the SIGALRM signal\n", argv[0]);
+        fprintf(stderr, "%s: unable to register the SIGALRM signal\n", cliente);
         exit(1);
     }
+
+    // Cachito de Juanan 
 
     /*
     switch (fork())
     {
-    case -1: /* Unable to fork, for some reason. */
+    case -1: // Unable to fork, for some reason. 
     perror(argv[0]);
     fprintf(stderr, "%s: unable to fork daemon\n", argv[0]);
     exit(1);
-case 0:
-    do
-    {
+    case 0:
+        do
+        {
         n_retry = RETRIES;
-        memset(buf, 0, TAM_BUFFER);
-        fgets(buf, TAM_BUFFER - 2, entrada);
-        printf("C: Sent: %s", buf);
+        memset(buf, 0, BUFFERSIZE);
+        fgets(buf, BUFFERSIZE - 2, entrada);
+        fprintf("C: Sent: %s", buf);
 
         while (n_retry > 0)
         {
@@ -222,7 +239,7 @@ case 0:
                 buf[i + 1] = '\n';
             }
 
-            if (sendto(s, buf, TAM_BUFFER, 0, (struct sockaddr *)&servaddr_in,
+            if (sendto(s, buf, BUFFERSIZE, 0, (struct sockaddr *)&servaddr_in,
                        sizeof(struct sockaddr_in)) == -1)
             {
                 perror(argv[0]);
@@ -235,26 +252,26 @@ case 0:
             }
 
             alarm(TIMEOUT);
-            if (recvfrom(s, buf, TAM_BUFFER, 0,
+            if (recvfrom(s, buf, BUFFERSIZE, 0,
                          (struct sockaddr *)&servaddr_in, &addrlen) == -1)
             {
                 if (errno == EINTR)
                 {
-                    printf("attempt %d (retries %d).\n", n_retry, RETRIES);
+                    fprintf("attempt %d (retries %d).\n", n_retry, RETRIES);
                     n_retry--;
                 }
                 else
                 {
-                    printf("Unable to get response from");
+                    fprintf("Unable to get response from");
                     exit(1);
                 }
             }
             else
             {
                 alarm(0);
-                /* Print out response. */
+                // Print out response. 
                 if (reqaddr.s_addr == ADDRNOTFOUND)
-                    printf("Host %s unknown by nameserver %s\n", nombre_fichero, servidor);
+                    fprintf("Host %s unknown by nameserver %s\n", nombre_fichero, servidor);
                 break;
             }
         }
@@ -262,10 +279,10 @@ case 0:
 
     fclose(entrada);
     break;
-default: /* Father process. */
+default: // Father process. 
     while (0 != strncmp(buf, "QUIT", 4))
     {
-        if (recv(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+        if (recv(s, buf, BUFFERSIZE, 0) != BUFFERSIZE)
         {
             perror("cliente");
             fprintf(stderr, "C: error recieving result\n");
@@ -279,18 +296,20 @@ default: /* Father process. */
     fclose(salida);
     break;
 };
+*/
 
-* /
+// Fin de cachito de Juanan.
+
     n_retry = RETRIES;
 
 while (n_retry > 0)
 {
     /* Send the request to the nameserver. */
-    if (sendto(s, argv[2], strlen(argv[2]), 0, (struct sockaddr *)&servaddr_in,
+    if (sendto(s, "UDP", strlen("UDP"), 0, (struct sockaddr *)&servaddr_in,
                sizeof(struct sockaddr_in)) == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to send request\n", argv[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to send request\n", cliente);
         exit(1);
     }
     /* Set up a timeout so I don't hang in case the packet
@@ -308,12 +327,12 @@ while (n_retry > 0)
     				 * Need to retry the request if we have
     				 * not already exceeded the retry limit.
     				 */
-            printf("attempt %d (retries %d).\n", n_retry, RETRIES);
+            fprintf(stdout, "attempt %d (retries %d).\n", n_retry, RETRIES);
             n_retry--;
         }
         else
         {
-            printf("Unable to get response from");
+            fprintf(stdout, "Unable to get response from");
             exit(1);
         }
     }
@@ -322,13 +341,13 @@ while (n_retry > 0)
         alarm(0);
         /* Print out response. */
         if (reqaddr.s_addr == ADDRNOTFOUND)
-            printf("Host %s unknown by nameserver %s\n", argv[2], argv[1]);
+            fprintf(stdout, "Host %s unknown by nameserver %s\n", "UDP", servidor);
         else
         {
             /* inet_ntop para interoperatividad con IPv6 */
             if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL)
                 perror(" inet_ntop \n");
-            printf("Address for %s is %s\n", argv[2], hostname);
+            fprintf(stdout, "Address for %s is %s\n", "UDP", hostname);
         }
         break;
     }
@@ -336,10 +355,11 @@ while (n_retry > 0)
 
 if (n_retry == 0)
 {
-    printf("Unable to get response from");
-    printf(" %s after %d attempts.\n", argv[1], RETRIES);
+    fprintf(stdout,"Unable to get response from");
+    fprintf(" %s after %d attempts.\n", servidor, RETRIES);
 }
-}
+
+} // Fin UDP
 
 void clienteTCP(char *cliente, char *servidor)
 {
@@ -351,6 +371,9 @@ void clienteTCP(char *cliente, char *servidor)
     int addrlen, i, j, errcode;
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
+
+    // Chachito de Juanan
+
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -364,14 +387,17 @@ void clienteTCP(char *cliente, char *servidor)
         fprintf(stderr, "El fichero de ordenes %s no se ha podido abrir\n", nombre_fichero);
         fflush(stderr);
         exit(1);
-    }*/
+    }
+    */
+
+   // Fin de cachito de Juanan.
 
     // Creamos el socket TCP local
     s = socket(AF_INET, SOCK_STREAM, 0);
     if (s == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to create socket\n", argv[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to create socket\n", cliente);
         exit(1);
     }
 
@@ -386,13 +412,13 @@ void clienteTCP(char *cliente, char *servidor)
 	 * user passed in. */
     memset(&hints, 0, sizeof(hints));
     hints.ai_family = AF_INET;
-    /* esta función es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta*/
-    errcode = getaddrinfo(argv[1], NULL, &hints, &res);
+    /* esta función es la recomendada para la compatibilidad con IPv6 gethostbyname queda obsoleta */
+    errcode = getaddrinfo(servidor, NULL, &hints, &res);
 
     if (errcode != 0)
     {
         // Si no se encontró un host con ese hostname
-        fprintf(stderr, "%s: No es posible resolver la IP de %s\n", arg[0], argc[1]);
+        fprintf(stderr, "%s: No es posible resolver la IP de %s\n", cliente, servidor);
         exit(1);
     }
     else
@@ -410,8 +436,8 @@ void clienteTCP(char *cliente, char *servidor)
 		 */
     if (connect(s, (const struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) == -1)
     {
-        perror(argc[0]);
-        fprintf(stderr, "%s: unable to connect to remote\n", argc[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to connect to remote\n", cliente);
         exit(1);
     }
 
@@ -425,18 +451,24 @@ void clienteTCP(char *cliente, char *servidor)
      addrlen = sizeof(struct sockaddr_in);
     if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
     {
-        perror(argv[0]);
-        fprintf(stderr, "%s: unable to read socket address\n", argv[0]);
+        perror(cliente);
+        fprintf(stderr, "%s: unable to read socket address\n", cliente);
         exit(1);
     }
 
-    /*sprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
+    // Cachito de Juanan.
+
+    /*
+    sfprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
     salida = fopen(exitFileName, "w");
     if (NULL == salida)
     {
         fprintf(stderr, "El fichero de salida no se ha podido abrir\n");
         exit(1);
-    }*/
+    }
+    */
+
+   // Fin de cachito de Juanan.
 
 	/* Print out a startup message for the user. */
     time(&timevar);
@@ -446,12 +478,15 @@ void clienteTCP(char *cliente, char *servidor)
 	 * that this program could easily be ported to a host
 	 * that does require it.
 	 */
-    printf("Connected to %s on port %u at %s",
-           argv[1], ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+    fprintf("Connected to %s on port %u at %s",
+           servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
-    /*switch (fork())
+    // Cachito de Juanan.
+
+    /*
+    switch (fork())
     {
-    case -1: /* Unable to fork, for some reason. */
+    case -1: // Unable to fork, for some reason.
         perror("cliente");
         fprintf(stderr, "%s: unable to fork daemon\n", "cliente");
         exit(1);
@@ -496,7 +531,7 @@ void clienteTCP(char *cliente, char *servidor)
             exit(1);
         }
         break;
-    default: /* Father process. */
+    default: // Father process.
         while (0 != strncmp(buf, "QUIT", 4))
         {
             if (recv(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
@@ -512,12 +547,15 @@ void clienteTCP(char *cliente, char *servidor)
 
         fclose(salida);
         break;
-    }; */
+    }; 
+    */
+
+   // Fin de cachito de Juanan.
 
     for (i=1; i<=5; i++) {
 		*buf = i;
 		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
-			fprintf(stderr, "%s: Connection aborted on error ",	argv[0]);
+			fprintf(stderr, "%s: Connection aborted on error ",	cliente);
 			fprintf(stderr, "on send number %d\n", i);
 			exit(1);
 		}
@@ -530,8 +568,8 @@ void clienteTCP(char *cliente, char *servidor)
 		 * sending any further requests.
 		 */
 	if (shutdown(s, 1) == -1) {
-		perror(argv[0]);
-		fprintf(stderr, "%s: unable to shutdown socket\n", argv[0]);
+		perror(cliente);
+		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
 		exit(1);
 	}
 
@@ -543,8 +581,8 @@ void clienteTCP(char *cliente, char *servidor)
 		 */
 	while (i = recv(s, buf, TAM_BUFFER, 0)) {
 		if (i == -1) {
-            perror(argv[0]);
-			fprintf(stderr, "%s: error reading result\n", argv[0]);
+            perror(cliente);
+			fprintf(stderr, "%s: error reading result\n", cliente);
 			exit(1);
 		}
 			/* The reason this while loop exists is that there
@@ -564,17 +602,17 @@ void clienteTCP(char *cliente, char *servidor)
 		while (i < TAM_BUFFER) {
 			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
 			if (j == -1) {
-                     perror(argv[0]);
-			         fprintf(stderr, "%s: error reading result\n", argv[0]);
+                     perror(cliente);
+			         fprintf(stderr, "%s: error reading result\n", cliente);
 			         exit(1);
                }
 			i += j;
 		}
 			/* Print out message indicating the identity of this reply. */
-		printf("Received result number %d\n", *buf);
+		fprintf("Received result number %d\n", *buf);
 	}
 
     /* Print message indicating completion of task. */
     time(&timevar);
-    printf("\n\nAll done at %s", (char *)ctime(&timevar));
-}
+    fprintf("\n\nAll done at %s", (char *)ctime(&timevar));
+} // Fin TCP
