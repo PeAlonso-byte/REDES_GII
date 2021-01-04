@@ -465,8 +465,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 
+				
 				/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
-				while (strcmp(comando, ".\r\n") != 0)
+				while (strcmp(comando, ".\r\n") != 0) // En este bucle entra, pero en el siguiente ya no.
 				{
 
 					// Vamos recibiendo los comandos

@@ -514,12 +514,12 @@ void clienteTCP(char *cliente, char *servidor)
         }
 
         //terminacion de la fase de envío de datos
-        if (shutdown(s, 1) == -1)
+        /*if (shutdown(s, 1) == -1)
         {
             perror(cliente);
             fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
             exit(1);
-        }
+        }*/
 
         /* Con este codigo de aqui se recibe la respuesta al comando */
         i = recv(s, buf, TAM_BUFFER, 0);
@@ -561,9 +561,8 @@ void clienteTCP(char *cliente, char *servidor)
                 while (strcmp(comando, ".\r\n") != 0)
                 {
                     fgets(comando, TAM_COMANDO, stdin);
-                    fprintf(stdout, "Se acaba de enviar : %s\n", comando);
 
-                    // Formateamos el comando
+                    // Formateamos el comando para que acabe en /r/n
                     i = 0;
                     while ('\n' != comando[i] && '\r' != comando[i] && '\0' != comando[i])
                     {
@@ -577,13 +576,12 @@ void clienteTCP(char *cliente, char *servidor)
 
                     // Fin de formateo.
 
-                    if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                    if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO) // Este send da el error que aparece en la esquina derecha de la pantalla
                     {
                         fprintf(stderr, "%s: Connection aborted on error ", cliente);
                         fprintf(stderr, "on send number %d\n", i);
                         exit(1);
                     }
-                    fprintf(stdout, "En el bucle vale : %s\n", comando); // Esto no lo imprime por lo que falla justo arriba en el send.
                 }
             }
             else
