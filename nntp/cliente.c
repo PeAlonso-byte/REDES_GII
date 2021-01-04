@@ -61,7 +61,7 @@ int main(int argc, char *argv[])
         }
         else
         {
-            fprintf(stderr, "El protocolo: %s no se correponde con UDP/TCP\n", argv[2]);
+            fprintf(stderr, "El protocolo %s no se correponde con UDP/TCP\n", argv[2]);
             fflush(stderr);
             exit(1);
         }
@@ -559,6 +559,7 @@ void clienteTCP(char *cliente, char *servidor)
     printf("Escribe el comando que deseas enviar al servidor: ");
     fgets(comando, strlen(comando), stdin);
 
+    //envio de datos
     if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
     {
         fprintf(stderr, "%s: Connection aborted on error ", cliente);
@@ -566,6 +567,7 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
 
+    //terminacion de la fase de envío de datos
     if (shutdown(s, 1) == -1)
     {
         perror(cliente);
@@ -584,11 +586,30 @@ void clienteTCP(char *cliente, char *servidor)
     }
 
     /* FIN RESPUESTA COMANDO POST */
-    if (strcmp(comando, "POST\n") == 0)
+
+    //######## LIST ###########
+    if ((strcmp(comando, "LIST\n")== 0)||(strcmp(comando, "list\n")== 0))
+    {   //comprobacion de que funciona bien, luego borrar
+        if (strcmp(buf, "215") == 0)
+        { // Se puede realizar el list.
+            printf("Recibiendo correctamente 215\n");
+        }
+    }
+    //######## NEWGROUPS ###########
+    else if ((strcmp(comando, "NEWGROUPS\n")== 0)||(strcmp(comando, "newgroups\n")== 0))
+    {
+        if (strcmp(buf, "231") == 0)
+        { // Se puede realizar el post.
+            printf("Recibiendo correctamente 231\n");
+
+        }
+    }
+    //######## POST ###########
+    else if ((strcmp(comando, "POST\n")== 0)||(strcmp(comando, "post\n")== 0))
     {
         if (strcmp(buf, "340") == 0)
         { // Se puede realizar el post.
-            printf("hemos recibido 340\n");
+            printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
             // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
             while (strcmp(comando, ".\n") != 0)
@@ -608,15 +629,16 @@ void clienteTCP(char *cliente, char *servidor)
         else
         { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
             fprintf(stdout, "Received result number %s\n", buf);
+            //printf("440 Posting no permitido\n");
         }
     }
     else
     { // Aqui irian los distintos comandos
-        printf("No se ha recibido un post\n");
+        printf("No se ha recibido ningun comando conocido\n");
     }
 
     /* FIN PRUEBA COMANDO POST */
-
+    
     /* 
     for (i=1; i<=5; i++) {
 		*buf = i;

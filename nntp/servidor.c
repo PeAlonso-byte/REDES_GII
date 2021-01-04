@@ -311,12 +311,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int len, len1, status;
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
-	FILE *f;
+	FILE *f, *grupos;
+	char linea[1024];
 	char header[512];
 	char body[512 * 5];			// Solo se van a poder enviar 5 lineas de body.
 	char auxPrimerasLetras[20]; // Sirve para saber las primeras letras de una cadena.
 	struct linger linger;		/* allow a lingering, graceful close; */
 								/* used when setting SO_LINGER */
+	int argc;
+	char *argv[5];
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -413,7 +416,42 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			 * request that a real server might do.
 			 */
 		/* Send a response back to the client. */
-		if (strcmp(comando, "POST\n") == 0)
+
+		//######## LIST ###########
+		if ((strcmp(comando, "LIST\n") == 0) || (strcmp(comando, "list\n") == 0))
+		{
+			printf("\n215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n\n");
+			//para comprobar que se conectar bien con cliente, luego borrar:
+			strcpy(buf, "215");
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+
+			//TODO: cambiar ruta
+			grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
+			if (grupos == NULL)
+			{
+				printf("No se ha podido leer el fichero grupos");
+			}
+
+			while (fgets(linea, 1024, (FILE *)grupos))
+			{
+				printf("%s", linea);
+			}
+			printf(".\n");
+			fclose(grupos);
+		}
+		//######## NEWGROUPS ###########
+		else if ((strcmp(comando, "NEWGROUPS\n") == 0) || (strcmp(comando, "newgroups\n") == 0))
+		{
+			printf("Se ha recibido un NEWGROUPS\n");
+			strcpy(buf, "231");
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
+
+			
+		}
+		//######## POST ###########
+		else if ((strcmp(comando, "POST\n") == 0) || (strcmp(comando, "post\n") == 0))
 		{
 			printf("Se ha recibido un POST\n");
 			strcpy(buf, "340");
@@ -442,9 +480,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					comando[len] = '\0';
 					/* This sleep simulates the processing of the
 			 * request that a real server might do.
-			 */		
+			 */
 					fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
-					if (strcmp(comando, "\n") == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
+					if (strcmp(comando, "\n") == 0)							   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 					{
 						printf("Ha entrado en el /n \n");
 						flag = 1;
@@ -460,7 +498,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					if (flag == 0)
 					{ // HEADER
 						printf("Ha entrado en el header\n");
-						
+
 						strncpy(auxPrimerasLetras, comando, 10);
 
 						fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
@@ -470,7 +508,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						{
 							strncat(header, comando, strlen(comando));
 							flagHeader++;
-						} else {
+						}
+						else
+						{
 							printf("Etiqueta erronea, envie otra\n");
 						}
 
@@ -484,7 +524,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						{
 							strncat(header, comando, strlen(comando));
 							flagHeader++;
-						}else {
+						}
+						else
+						{
 							printf("Etiqueta erronea, envie otra\n");
 						}
 					}
@@ -498,7 +540,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		else
 		{
 			strcpy(buf, "440");
-			printf("No se ha recibido un POST\n");
+			printf("500 Comando no reconocido\n");
+			//printf("No se ha recibido un POST\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 		}
