@@ -286,7 +286,8 @@ char *argv[];
 		printf("\nFin de programa servidor!\n");
 
 	default: /* Parent process comes here. */
-		exit(0);
+		//exit(0);
+		printf("Hola");
 	}
 }
 
@@ -302,12 +303,12 @@ char *argv[];
  */
 void serverTCP(int s, struct sockaddr_in clientaddr_in)
 {
-	int flagHeader = 0;		   // Tiene que valer 2 para que el header este completo.
-	int flag = 0;			   // 0 = HEADER; 1 = BODY
-	int reqcnt = 0;			   /* keeps count of number of requests */
-	char buf[TAM_BUFFER];	   /* This example uses TAM_BUFFER byte messages. */
-	char hostname[MAXHOST];	   /* remote host's name string */
-	char comando[TAM_COMANDO]; // Para recibir comandos.
+	int flagHeader = 0;				// Tiene que valer 2 para que el header este completo.
+	int flag = 0;					// 0 = HEADER; 1 = BODY
+	int reqcnt = 0;					/* keeps count of number of requests */
+	char buf[TAM_BUFFER];			/* This example uses TAM_BUFFER byte messages. */
+	char hostname[MAXHOST];			/* remote host's name string */
+	char comando[TAM_COMANDO] = ""; // Para recibir comandos.
 	int len, len1, status;
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
@@ -385,11 +386,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * how the server will know that no more requests will
 		 * follow, and the loop will be exited.
 		 */
-	while (len = recv(s, comando, TAM_COMANDO, 0))
+	while (strcmp(comando, "QUIT\n") != 0 || strcmp(comando, "quit\n") != 0)
 	{
-		if (len == -1)
-			errout(hostname); /* error from recv */
-							  /* The reason this while loop exists is that there
+
+		while (len = recv(s, comando, TAM_COMANDO, 0))
+		{
+			if (len == -1)
+				errout(hostname); /* error from recv */
+								  /* The reason this while loop exists is that there
 			 * is a remote possibility of the above recv returning
 			 * less than TAM_BUFFER bytes.  This is because a recv returns
 			 * as soon as there is some data, and will not wait for
@@ -403,144 +407,155 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			 * next recv at the top of the loop will start at
 			 * the begining of the next request.
 			 */
-		while (len < TAM_COMANDO)
-		{
-			len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
-			if (len1 == -1)
-				errout(hostname);
-			len += len1;
-		}
-		/* Increment the request count. */
-		reqcnt++;
-		/* This sleep simulates the processing of the
+			while (len < TAM_COMANDO)
+			{
+				len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
+				if (len1 == -1)
+					errout(hostname);
+				len += len1;
+			}
+			/* Increment the request count. */
+			reqcnt++;
+			/* This sleep simulates the processing of the
 			 * request that a real server might do.
 			 */
-		/* Send a response back to the client. */
+			/* Send a response back to the client. */
 
-		//######## LIST ###########
-		if ((strcmp(comando, "LIST\n") == 0) || (strcmp(comando, "list\n") == 0))
-		{
-			printf("\n215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n\n");
-			//para comprobar que se conectar bien con cliente, luego borrar:
-			strcpy(buf, "215");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			//TODO: cambiar ruta
-			grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
-			if (grupos == NULL)
+			//######## LIST ###########
+			if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
 			{
-				printf("No se ha podido leer el fichero grupos");
-			}
+				printf("\n215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n\n");
+				//para comprobar que se conectar bien con cliente, luego borrar:
+				strcpy(buf, "215");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
 
-			while (fgets(linea, 1024, (FILE *)grupos))
-			{
-				printf("%s", linea);
-			}
-			printf(".\n");
-			fclose(grupos);
-		}
-		//######## NEWGROUPS ###########
-		else if ((strcmp(comando, "NEWGROUPS\n") == 0) || (strcmp(comando, "newgroups\n") == 0))
-		{
-			printf("Se ha recibido un NEWGROUPS\n");
-			strcpy(buf, "231");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-		}
-		//######## POST ###########
-		else if ((strcmp(comando, "POST\n") == 0) || (strcmp(comando, "post\n") == 0))
-		{
-			printf("Se ha recibido un POST\n");
-			strcpy(buf, "340");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
-			while (strcmp(comando, ".\n") != 0)
-			{
-				// Vamos recibiendo los comandos
-				//printf("Esperando a recibir comandos \n"); // Provoca un bucle infinito.
-				while (len = recv(s, comando, TAM_COMANDO, 0))
+				//TODO: cambiar ruta
+				grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
+				if (grupos == NULL)
 				{
-					if (len == -1)
-						errout(hostname); // error from recv 
+					printf("No se ha podido leer el fichero grupos");
+				}
 
-					while (len < TAM_COMANDO)
+				while (fgets(linea, 1024, (FILE *)grupos))
+				{
+					printf("%s", linea);
+				}
+				printf(".\n");
+				fclose(grupos);
+			} // ######### QUIT ##########
+			else if ((strcmp(comando, "QUIT\r\n") == 0) || (strcmp(comando, "quit\r\n") == 0)) {
+				// Falta por implementar.
+				printf("Apagando el servidor\n");
+
+			}
+			//######## NEWGROUPS ###########
+			else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
+			{
+				printf("Se ha recibido un NEWGROUPS\n");
+				strcpy(buf, "231\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
+			//######## POST ###########
+			else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
+			{
+				printf("Se ha recibido un POST\n");
+				strcpy(buf, "340\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+
+				/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
+				while (strcmp(comando, ".\r\n") != 0)
+				{
+
+					// Vamos recibiendo los comandos
+					//printf("Esperando a recibir comandos \n"); // Provoca un bucle infinito.
+					//len = recv(s, comando, TAM_COMANDO, 0);
+					//fprintf(stdout, "Se ha recibido el comando : %s\n", comando);
+					
+					while (len = recv(s, comando, TAM_COMANDO, 0))
 					{
-						len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
-						if (len1 == -1)
-							errout(hostname);
-						len += len1;
-					}
-					// Increment the request count.
-					reqcnt++;
-					comando[len] = '\0';
-					// This sleep simulates the processing of the request that a real server might do.
-			 		
-					fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
-					if (strcmp(comando, "\n") == 0)							   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
-					{
-						printf("Ha entrado en el /n \n");
-						flag = 1;
-						if (flagHeader != 2)
-						{ // Quiere decir que el header no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
-							printf("Error 441\n");
-							strcpy(buf, "441");
-							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+						
+						if (len == -1)
+							errout(hostname); // error from recv
+
+						while (len < TAM_COMANDO)
+						{
+							len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
+							if (len1 == -1)
 								errout(hostname);
-							break; // Salimos del bucle
+							len += len1;
 						}
-					}
-					if (flag == 0)
-					{ // HEADER
-						printf("Ha entrado en el header\n");
+						// Increment the request count.
+						reqcnt++;
+						comando[len] = '\0';
+						// This sleep simulates the processing of the request that a real server might do.
 
-						strncpy(auxPrimerasLetras, comando, 10);
-
-						fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
-						fflush(stdout);
-
-						if (strcmp(auxPrimerasLetras, "Newsgroups") == 0 || strcmp(auxPrimerasLetras, "newsgroups") == 0)
+						fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
+						if (strcmp(comando, "\r\n") == 0)							   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 						{
+							printf("Ha entrado en el /n \n");
+							flag = 1;
+							if (flagHeader != 2)
+							{ // Quiere decir que el header no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
+								printf("Error 441\n");
+								strcpy(buf, "441\r\n");
+								if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+									errout(hostname);
+								break; // Salimos del bucle
+							}
+						}
+						if (flag == 0)
+						{ // HEADER
+							printf("Ha entrado en el header\n");
+
+							strncpy(auxPrimerasLetras, comando, 10);
+
+							fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
+							fflush(stdout);
+
+							if (strcmp(auxPrimerasLetras, "Newsgroups") == 0 || strcmp(auxPrimerasLetras, "newsgroups") == 0)
+							{
+								strncat(header, comando, strlen(comando));
+								flagHeader++;
+							}
+							else
+							{
+								printf("Etiqueta erronea, envie otra\n");
+							}
+
 							strncat(header, comando, strlen(comando));
-							flagHeader++;
+							strncpy(auxPrimerasLetras, comando, 7);
+
+							fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
+							fflush(stdout);
+
+							if (strcmp(auxPrimerasLetras, "Subject") == 0 || strcmp(auxPrimerasLetras, "subject") == 0)
+							{
+								strncat(header, comando, strlen(comando));
+								flagHeader++;
+							}
+							else
+							{
+								printf("Etiqueta erronea, envie otra\n");
+							}
 						}
 						else
-						{
-							printf("Etiqueta erronea, envie otra\n");
+						{ // Esto es el body
+							printf("Ha entrado en el body correctamente\n");
 						}
-
-						strncat(header, comando, strlen(comando));
-						strncpy(auxPrimerasLetras, comando, 7);
-
-						fprintf(stdout, "Las primeras letras del comando son: %s \n", auxPrimerasLetras);
-						fflush(stdout);
-
-						if (strcmp(auxPrimerasLetras, "Subject") == 0 || strcmp(auxPrimerasLetras, "subject") == 0)
-						{
-							strncat(header, comando, strlen(comando));
-							flagHeader++;
-						}
-						else
-						{
-							printf("Etiqueta erronea, envie otra\n");
-						}
-					}
-					else
-					{ // Esto es el body
-						printf("Ha entrado en el body correctamente\n");
 					}
 				}
 			}
-		}
-		else
-		{
-			strcpy(buf, "440");
-			printf("500 Comando no reconocido\n");
-			//printf("No se ha recibido un POST\n");
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
+			else
+			{
+				strcpy(buf, "440");
+				printf("500 Comando no reconocido\n");
+				//printf("No se ha recibido un POST\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
 		}
 	}
 

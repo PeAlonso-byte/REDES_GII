@@ -373,8 +373,6 @@ void clienteTCP(char *cliente, char *servidor)
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
 
-    // Chachito de Juanan
-
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -390,8 +388,6 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
     */
-
-    // Fin de cachito de Juanan.
 
     // Creamos el socket TCP local
     s = socket(AF_INET, SOCK_STREAM, 0);
@@ -457,8 +453,6 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
 
-    // Cachito de Juanan.
-
     /*
     sfprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
     salida = fopen(exitFileName, "w");
@@ -468,8 +462,6 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
     */
-
-    // Fin de cachito de Juanan.
 
     /* Print out a startup message for the user. */
     time(&timevar);
@@ -482,164 +474,131 @@ void clienteTCP(char *cliente, char *servidor)
     fprintf(stdout, "Connected to %s on port %u at %s",
             servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
-    // Cachito de Juanan.
-
-    /*
-    switch (fork())
+    /* PRUEBA COMANDO POST */
+    char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
+    while (strcmp(comando, "QUIT\r\n") != 0 && strcmp(comando, "quit\r\n") != 0)
     {
-    case -1: // Unable to fork, for some reason.
-        perror("cliente");
-        fprintf(stderr, "%s: unable to fork daemon\n", "cliente");
-        exit(1);
 
-    case 0:
-        do
-        {
-            memset(buf, 0, TAM_BUFFER);
-            fgets(buf, TAM_BUFFER - 2, entrada);
+        printf("Escribe el comando que deseas enviar al servidor: ");
+        fgets(comando, TAM_COMANDO, stdin);
 
-            tmp = 0;
-            while (buf[tmp] != '\n' && buf[tmp] != '\0')
-                tmp++;
-            if (buf[tmp] != '\0')
-                buf[tmp] = '\0';
+        // CODIGO PARA AÑADIR EL \R\N A LOS COMANDOS
 
-            i = 0;
-            while ('\n' != buf[i] && '\r' != buf[i] && '\0' != buf[i])
-            {
-                i++;
-            }
-            if ('\n' == buf[i])
-            {
-                buf[i] = '\r';
-                buf[i + 1] = '\n';
-            }
-
-            if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-            {
-                fprintf(stderr, "%s: Connection aborted on error", "client");
-                fprintf(stderr, "on send %s\n", buf);
-                exit(1);
-            }
-        } while (!feof(entrada));
-
-        fclose(entrada);
-
-        if (shutdown(s, 1) == -1)
-        { //cerramos el socket porque ya no va a enviar nada más el cliente
-            perror("client");
-            fprintf(stderr, "%s: unable to shutdown socket\n", "client");
-            exit(1);
-        }
-        break;
-    default: // Father process.
-        while (0 != strncmp(buf, "QUIT", 4))
-        {
-            if (recv(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-            {
-                perror("cliente");
-                fprintf(stderr, "C: error recieving result\n");
-                exit(1);
-            }
-            if (0 != strncmp(buf, "QUIT", 4))
-                fprintf(salida, "%s\n", buf);
-        }
-        fprintf(salida, "Getting out. Bye!\n");
-
-        fclose(salida);
-        break;
-    }; 
+        //int tmp = 0;
+        /*
+    while (comando[tmp] != '\n' && comando[tmp] != '\0')
+        tmp++;
+    if (comando[tmp] != '\0')
+        comando[tmp] = '\0';
     */
 
-    // Fin de cachito de Juanan.
-
-    /* PRUEBA COMANDO POST */
-    char comando[TAM_COMANDO]; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
-
-    printf("Escribe el comando que deseas enviar al servidor: ");
-    fgets(comando, TAM_COMANDO, stdin);
-    //envio de datos
-    if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
-    {
-        fprintf(stderr, "%s: Connection aborted on error ", cliente);
-        fprintf(stderr, "on send number %d\n", i);
-        exit(1);
-    }
-
-    //terminacion de la fase de envío de datos
-    if (shutdown(s, 1) == -1)
-    {
-        perror(cliente);
-        fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
-        exit(1);
-    }
-
-    /* Con este codigo de aqui se recibe la respuesta al comando */
-    i = recv(s, buf, TAM_BUFFER, 0);
-
-    if (i == -1)
-    {
-        perror(cliente);
-        fprintf(stderr, "%s: error reading result\n", cliente);
-        exit(1);
-    }
-
-    /* FIN RESPUESTA COMANDO POST */
-
-    //######## LIST ###########
-    
-    if ((strcmp(comando, "LIST\n")== 0)||(strcmp(comando, "list\n")== 0))
-    {   //comprobacion de que funciona bien, luego borrar
-        if (strcmp(buf, "215") == 0)
-        { 
-            printf("Recibiendo correctamente 215\n");
+        i = 0;
+        while ('\n' != comando[i] && '\r' != comando[i] && '\0' != comando[i])
+        {
+            i++;
         }
-    }
-    //######## NEWGROUPS ###########
-    else if ((strcmp(comando, "NEWGROUPS\n")== 0)||(strcmp(comando, "newgroups\n")== 0))
-    {
-        if (strcmp(buf, "231") == 0)
-        { 
-            printf("Recibiendo correctamente 231\n");
-
+        if ('\n' == comando[i])
+        {
+            comando[i] = '\r';
+            comando[i + 1] = '\n';
         }
-    }
-    //######## POST ###########
-    else if ((strcmp(comando, "POST\n")== 0)||(strcmp(comando, "post\n")== 0))
-    {
-        if (strcmp(buf, "340") == 0)
-        { // Se puede realizar el post.
-            printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
-            // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
-            while (strcmp(comando, ".\n") != 0)
+        // FIN DE FORMATEO DE COMANDOS.
+
+        //envio de datos
+        if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+        {
+            fprintf(stderr, "%s: Connection aborted on error ", cliente);
+            fprintf(stderr, "on send number %d\n", i);
+            exit(1);
+        }
+
+        //terminacion de la fase de envío de datos
+        if (shutdown(s, 1) == -1)
+        {
+            perror(cliente);
+            fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
+            exit(1);
+        }
+
+        /* Con este codigo de aqui se recibe la respuesta al comando */
+        i = recv(s, buf, TAM_BUFFER, 0);
+
+        if (i == -1)
+        {
+            perror(cliente);
+            fprintf(stderr, "%s: error reading result\n", cliente);
+            exit(1);
+        }
+
+        /* FIN RESPUESTA COMANDO POST */
+
+        //######## LIST ###########
+
+        if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
+        { //comprobacion de que funciona bien, luego borrar
+            if (strcmp(buf, "215\r\n") == 0)
             {
-                fgets(comando, TAM_COMANDO, stdin);
-                fprintf(stdout, "Se acaba de enviar : %s\n", comando);
-                
+                printf("Recibiendo correctamente 215\n");
+            }
+        }
+        //######## NEWGROUPS ###########
+        else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
+        {
+            if (strcmp(buf, "231\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 231\n");
+            }
+        }
+        //######## POST ###########
+        else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
+        {
+            if (strcmp(buf, "340\r\n") == 0)
+            { // Se puede realizar el post.
+                printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
-                if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
+                while (strcmp(comando, ".\r\n") != 0)
                 {
-                    fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                    fprintf(stderr, "on send number %d\n", i);
-                    exit(1);
+                    fgets(comando, TAM_COMANDO, stdin);
+                    fprintf(stdout, "Se acaba de enviar : %s\n", comando);
+
+                    // Formateamos el comando
+                    i = 0;
+                    while ('\n' != comando[i] && '\r' != comando[i] && '\0' != comando[i])
+                    {
+                        i++;
+                    }
+                    if ('\n' == comando[i])
+                    {
+                        comando[i] = '\r';
+                        comando[i + 1] = '\n';
+                    }
+
+                    // Fin de formateo.
+
+                    if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                    {
+                        fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                        fprintf(stderr, "on send number %d\n", i);
+                        exit(1);
+                    }
+                    fprintf(stdout, "En el bucle vale : %s\n", comando); // Esto no lo imprime por lo que falla justo arriba en el send.
                 }
-                fprintf(stdout, "En el bucle vale : %s\n", comando);
+            }
+            else
+            { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
+                fprintf(stdout, "Received result number %s\n", buf);
+                //printf("440 Posting no permitido\n");
             }
         }
         else
-        { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
-            fprintf(stdout, "Received result number %s\n", buf);
-            //printf("440 Posting no permitido\n");
+        { // Aqui irian los distintos comandos
+            printf("No se ha recibido ningun comando conocido\n");
         }
     }
-    else
-    { // Aqui irian los distintos comandos
-        printf("No se ha recibido ningun comando conocido\n");
-    }
-
     /* FIN PRUEBA COMANDO POST */
-    
+
     /* 
     for (i=1; i<=5; i++) {
 		*buf = i;
