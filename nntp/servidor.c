@@ -447,8 +447,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			strcpy(buf, "231");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
-
-			
 		}
 		//######## POST ###########
 		else if ((strcmp(comando, "POST\n") == 0) || (strcmp(comando, "post\n") == 0))
@@ -466,7 +464,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				while (len = recv(s, comando, TAM_COMANDO, 0))
 				{
 					if (len == -1)
-						errout(hostname); /* error from recv */
+						errout(hostname); // error from recv 
 
 					while (len < TAM_COMANDO)
 					{
@@ -475,12 +473,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							errout(hostname);
 						len += len1;
 					}
-					/* Increment the request count. */
+					// Increment the request count.
 					reqcnt++;
 					comando[len] = '\0';
-					/* This sleep simulates the processing of the
-			 * request that a real server might do.
-			 */
+					// This sleep simulates the processing of the request that a real server might do.
+			 		
 					fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
 					if (strcmp(comando, "\n") == 0)							   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 					{

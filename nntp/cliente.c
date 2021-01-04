@@ -557,8 +557,7 @@ void clienteTCP(char *cliente, char *servidor)
     char comando[TAM_COMANDO]; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
 
     printf("Escribe el comando que deseas enviar al servidor: ");
-    fgets(comando, strlen(comando), stdin);
-
+    fgets(comando, TAM_COMANDO, stdin);
     //envio de datos
     if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
     {
@@ -575,7 +574,7 @@ void clienteTCP(char *cliente, char *servidor)
         exit(1);
     }
 
-    /* Con este codigo de aqui se recibe la respuesta al comando POST */
+    /* Con este codigo de aqui se recibe la respuesta al comando */
     i = recv(s, buf, TAM_BUFFER, 0);
 
     if (i == -1)
@@ -588,6 +587,7 @@ void clienteTCP(char *cliente, char *servidor)
     /* FIN RESPUESTA COMANDO POST */
 
     //######## LIST ###########
+    
     if ((strcmp(comando, "LIST\n")== 0)||(strcmp(comando, "list\n")== 0))
     {   //comprobacion de que funciona bien, luego borrar
         if (strcmp(buf, "215") == 0)
@@ -624,6 +624,7 @@ void clienteTCP(char *cliente, char *servidor)
                     fprintf(stderr, "on send number %d\n", i);
                     exit(1);
                 }
+                fprintf(stdout, "En el bucle vale : %s\n", comando);
             }
         }
         else
