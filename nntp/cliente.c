@@ -591,7 +591,7 @@ void clienteTCP(char *cliente, char *servidor)
     if ((strcmp(comando, "LIST\n")== 0)||(strcmp(comando, "list\n")== 0))
     {   //comprobacion de que funciona bien, luego borrar
         if (strcmp(buf, "215") == 0)
-        { // Se puede realizar el list.
+        { 
             printf("Recibiendo correctamente 215\n");
         }
     }
@@ -599,7 +599,7 @@ void clienteTCP(char *cliente, char *servidor)
     else if ((strcmp(comando, "NEWGROUPS\n")== 0)||(strcmp(comando, "newgroups\n")== 0))
     {
         if (strcmp(buf, "231") == 0)
-        { // Se puede realizar el post.
+        { 
             printf("Recibiendo correctamente 231\n");
 
         }
