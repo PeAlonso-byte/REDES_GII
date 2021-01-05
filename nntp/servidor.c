@@ -23,6 +23,7 @@
 #define TAM_BUFFER 10
 #define MAXHOST 128
 #define TAM_COMANDO 512
+#define TAM_NG 25
 
 extern int errno;
 
@@ -286,8 +287,7 @@ char *argv[];
 		printf("\nFin de programa servidor!\n");
 
 	default: /* Parent process comes here. */
-		//exit(0);
-		printf("Hola");
+		exit(0);
 	}
 }
 
@@ -313,14 +313,17 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
 	FILE *f, *grupos;
-	char linea[1024];
+	char linea[TAM_COMANDO];
 	char header[512];
 	char body[512 * 5];			// Solo se van a poder enviar 5 lineas de body.
 	char auxPrimerasLetras[20]; // Sirve para saber las primeras letras de una cadena.
 	struct linger linger;		/* allow a lingering, graceful close; */
 								/* used when setting SO_LINGER */
-	int argc;
-	char *argv[5];
+	char newgroups[TAM_NG];
+	char *token, *token2;
+	int token3, token4;
+	char *separator, *separator1, *separator2;
+	int separator3, separator4;
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -425,7 +428,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
 			{
 				printf("\n215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n\n");
-				//para comprobar que se conectar bien con cliente, luego borrar:
 				strcpy(buf, "215");
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
@@ -437,23 +439,145 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					printf("No se ha podido leer el fichero grupos");
 				}
 
-				while (fgets(linea, 1024, (FILE *)grupos))
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
 				{
 					printf("%s", linea);
 				}
 				printf(".\n");
 				fclose(grupos);
-			} // ######### QUIT ##########
-			else if ((strcmp(comando, "QUIT\r\n") == 0) || (strcmp(comando, "quit\r\n") == 0)) {
-				// Falta por implementar.
-				printf("Apagando el servidor\n");
-
-			}
-			//######## NEWGROUPS ###########
+			} //######## NEWGROUPS ###########
 			else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
 			{
-				printf("Se ha recibido un NEWGROUPS\n");
+				printf("\n\tUso: <newgroups> <YYMMDD> <HHMMSS>\n\n");
 				strcpy(buf, "231\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+
+				recv(s, newgroups, 300, 0);
+				//fprintf(stdout, "Servidor recibe: %s\n", newgroups);
+
+				token = strtok(newgroups, " ");
+				//TODO: no se compara el char * con el char
+				//if ((strcmp(token, "NEWGROUPS") == 0)||(strcmp(token, "newgroups")))
+				if (token != NULL)
+				{
+					//"newgroups"
+					token2 = token;
+					//printf("\n%s\n", token2);
+				}
+				else
+				{
+					printf("\n501 Error de sintaxis. ");
+					printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+				}
+				token = strtok(NULL, " ");
+				if ((strlen(token) == 6))
+				{
+					//fecha
+					token3 = atoi(token);
+					//printf("%d\n", token3);
+				}
+				else
+				{
+					printf("\n501 Error de sintaxis en la fecha. ");
+					printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+				}
+				token = strtok(NULL, " ");
+				if ((strlen(token) == 6))
+				{
+					//hora
+					token4 = atoi(token);
+					//printf("%d\n", token4);
+				}
+				else
+				{
+					printf("\n501 Error de sintaxis en la hora. ");
+					printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+				}
+
+				//TODO: cambiar ruta
+				grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
+				if (grupos == NULL)
+				{
+					printf("No se ha podido leer el fichero grupos");
+				}
+
+				printf("\n231 Nuevos grupos desde %.6d %.6d\n", token3, token4);
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+				{
+					separator = strtok(linea, " ");
+					separator2 = separator;
+					if (separator2 != NULL)
+					{
+						//nombre
+						//printf("\n%s\n", separator2);
+					}
+					else
+					{
+						printf("El nombre del grupo esta vacio\n");
+					}
+					separator = strtok(NULL, " ");
+					if (separator != NULL)
+					{
+						//ultimo
+						//printf("%s\n", separator);
+					}
+					else
+					{
+						printf("El numero del ultimo articulo del grupo esta vacio\n");
+					}
+					separator = strtok(NULL, " ");
+					if (separator != NULL)
+					{
+						//primero
+						//printf("%s\n", separator);
+					}
+					else
+					{
+						printf("El numero del primer articulo del grupo esta vacio\n");
+					}
+					separator = strtok(NULL, " ");
+					if (separator != NULL)
+					{
+						//dia
+						separator3 = atoi(separator);
+						//printf("%d\n", separator3);
+					}
+					else
+					{
+						printf("El dia del grupo esta vacio\n");
+					}
+					separator = strtok(NULL, " ");
+					if (separator != NULL)
+					{
+						//hora
+						separator4 = atoi(separator);
+						//printf("%d\n", separator4);
+					}
+					else
+					{
+						printf("La hora del grupo esta vacio\n");
+					}
+
+					//si la fecha es mayor, me da igual la hora
+					if (separator3 > token3)
+					{
+						printf("%s\n", separator2);
+					}
+					//si la fecha es la misma, compruebo la hora
+					if (separator3 == token3 && separator4 >= token4)
+					{
+						printf("%s\n", separator2);
+					}
+				}
+				printf(".\n");
+				fclose(grupos);
+			}
+			//######## NEWNEWS ###########
+			else if ((strcmp(comando, "NEWNEWS\r\n") == 0) || (strcmp(comando, "newnews\r\n") == 0))
+			{
+				printf("Se ha recibido un NEWNEwS\n");
+				strcpy(buf, "230\r\n");
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 			}
@@ -465,7 +589,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 
-				
 				/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
 				while (strcmp(comando, ".\r\n") != 0) // En este bucle entra, pero en el siguiente ya no.
 				{
@@ -474,10 +597,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					//printf("Esperando a recibir comandos \n"); // Provoca un bucle infinito.
 					//len = recv(s, comando, TAM_COMANDO, 0);
 					//fprintf(stdout, "Se ha recibido el comando : %s\n", comando);
-					
+
 					while (len = recv(s, comando, TAM_COMANDO, 0))
 					{
-						
+
 						if (len == -1)
 							errout(hostname); // error from recv
 
@@ -494,7 +617,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						// This sleep simulates the processing of the request that a real server might do.
 
 						fprintf(stdout, "El comando recibido es : %s\n", comando); // Algo falla aqui porque no recibimos el comando.
-						if (strcmp(comando, "\r\n") == 0)							   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
+						if (strcmp(comando, "\r\n") == 0)						   // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 						{
 							printf("Ha entrado en el /n \n");
 							flag = 1;
@@ -548,6 +671,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 					}
 				}
+			} // ######### QUIT ##########
+			else if ((strcmp(comando, "QUIT\r\n") == 0) || (strcmp(comando, "quit\r\n") == 0))
+			{
+				// Falta por implementar.
+				printf("Apagando el servidor\n");
 			}
 			else
 			{

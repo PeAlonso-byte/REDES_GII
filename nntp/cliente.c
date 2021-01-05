@@ -27,6 +27,7 @@ extern int errno;
 #define MAXHOST 512
 #define TAM_BUFFER 10
 #define TAM_COMANDO 512
+#define TAM_NG 25
 
 void handler()
 {
@@ -372,6 +373,7 @@ void clienteTCP(char *cliente, char *servidor)
     int addrlen, i, j, errcode;
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
+    char newgroups[TAM_NG];
 
     /*
     FILE *entrada, *salida;
@@ -534,20 +536,38 @@ void clienteTCP(char *cliente, char *servidor)
         /* FIN RESPUESTA COMANDO POST */
 
         //######## LIST ###########
-
         if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
-        { //comprobacion de que funciona bien, luego borrar
-            if (strcmp(buf, "215\r\n") == 0)
+        {   //TODO: este if se puede eliminar entero
+            /*if (strcmp(buf, "215\r\n") == 0)
             {
                 printf("Recibiendo correctamente 215\n");
-            }
+            }*/
         }
         //######## NEWGROUPS ###########
         else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
         {
-            if (strcmp(buf, "231\r\n") == 0)
+            /*if (strcmp(buf, "231\r\n") == 0)
             {
                 printf("Recibiendo correctamente 231\n");
+            }*/
+
+            fflush(stdin);
+            fgets(newgroups, TAM_NG, stdin);
+            //printf("\nEnvío desde cliente:%s\n", newgroups);
+                   
+            if (send(s, newgroups, TAM_NG, 0) != TAM_NG) 
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
+            }
+        }
+        //######## NEWNEWS ###########
+        else if ((strcmp(comando, "NEWNEWS\r\n") == 0) || (strcmp(comando, "newnews\r\n") == 0))
+        {
+            if (strcmp(buf, "230\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 230\n");
             }
         }
         //######## POST ###########
