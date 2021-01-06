@@ -26,8 +26,8 @@ extern int errno;
 #define TIMEOUT 6
 #define MAXHOST 512
 #define TAM_BUFFER 10
-#define TAM_COMANDO 512
-#define TAM_NG 25
+#define TAM_COMANDO 510
+//#define TAM_NG 25
 
 void handler()
 {
@@ -373,7 +373,7 @@ void clienteTCP(char *cliente, char *servidor)
     int addrlen, i, j, errcode;
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
-    char newgroups[TAM_NG];
+    //char newgroups[TAM_NG];
 
     /*
     FILE *entrada, *salida;
@@ -537,14 +537,14 @@ void clienteTCP(char *cliente, char *servidor)
 
         //######## LIST ###########
         if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
-        {   //TODO: este if se puede eliminar entero
+        { //TODO: este if se puede eliminar entero
             /*if (strcmp(buf, "215\r\n") == 0)
             {
                 printf("Recibiendo correctamente 215\n");
             }*/
         }
         //######## NEWGROUPS ###########
-        else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
+        else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
         {
             /*if (strcmp(buf, "231\r\n") == 0)
             {
@@ -552,10 +552,10 @@ void clienteTCP(char *cliente, char *servidor)
             }*/
 
             fflush(stdin);
-            fgets(newgroups, TAM_NG, stdin);
+            //fgets(newgroups, TAM_NG, stdin);
             //printf("\nEnvío desde cliente:%s\n", newgroups);
-                   
-            if (send(s, newgroups, TAM_NG, 0) != TAM_NG) 
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
@@ -563,11 +563,21 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## NEWNEWS ###########
-        else if ((strcmp(comando, "NEWNEWS\r\n") == 0) || (strcmp(comando, "newnews\r\n") == 0))
+        else if ((strncmp(comando, "NEWNEWS\r\n", 7) == 0) || (strncmp(comando, "newnews\r\n", 7) == 0))
         {
-            if (strcmp(buf, "230\r\n") == 0)
+            /*if (strcmp(buf, "230\r\n") == 0)
             {
                 printf("Recibiendo correctamente 230\n");
+            }*/
+
+            fflush(stdin);
+            //printf("\nEnvío desde cliente:%s\n", comando);
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
             }
         }
         //######## POST ###########
@@ -577,11 +587,12 @@ void clienteTCP(char *cliente, char *servidor)
             { // Se puede realizar el post.
                 printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
-                // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
+                // Vamos a enviar bloques de 510 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
                 while (strcmp(comando, ".\r\n") != 0)
                 {
                     int lon = strlen(comando);
-                    for (int k = 0; k < lon; k++) {
+                    for (int k = 0; k < lon; k++)
+                    {
                         comando[k] = '\0';
                     }
                     fgets(comando, TAM_COMANDO, stdin);
@@ -607,15 +618,16 @@ void clienteTCP(char *cliente, char *servidor)
                         exit(1);
                     }
                 }
-            // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
+                // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
                 i = recv(s, buf, TAM_BUFFER, 0);
-                if (strcmp(buf, "240\r\n") == 0) {
+                if (strcmp(buf, "240\r\n") == 0)
+                {
                     printf("240 Article received OK\n");
-                } else {
-                   printf("441 Posting failed\n"); 
                 }
-
-
+                else
+                {
+                    printf("441 Posting failed\n");
+                }
             }
             else
             { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1

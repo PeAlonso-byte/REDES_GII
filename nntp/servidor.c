@@ -22,8 +22,8 @@
 #define BUFFERSIZE 1024			/* maximum size of packets to be received */
 #define TAM_BUFFER 10
 #define MAXHOST 128
-#define TAM_COMANDO 512
-#define TAM_NG 25
+#define TAM_COMANDO 510
+//#define TAM_NG 25
 
 extern int errno;
 
@@ -312,18 +312,22 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int len, len1, status;
 	struct hostent *hp; /* pointer to host info for remote host */
 	long timevar;		/* contains time returned by time() */
-	FILE *f, *grupos;
+	FILE *f, *grupos, *noticia;
 	int num_lineas = 0;
-	char linea[512];
-	char header[512];
-	char body[512 * 5];	  // Solo se van a poder enviar 5 lineas de body.
-	struct linger linger; /* allow a lingering, graceful close; */
-						  /* used when setting SO_LINGER */
-	char newgroups[TAM_NG];
-	char *token, *token2;
+	char linea[TAM_COMANDO], lineanoticia[TAM_COMANDO];
+	char header[TAM_COMANDO];
+	char body[TAM_COMANDO * 5]; // Solo se van a poder enviar 5 lineas de body.
+	struct linger linger;		/* allow a lingering, graceful close; */
+								/* used when setting SO_LINGER */
+	//char newgroups[80];
+	char *token, *token2, *token5, *token6;
 	int token3, token4;
-	char *separator, *separator1, *separator2;
+	char *separator, *separator1, *separator2, *separator5;
 	int separator3, separator4;
+	char *grusub, *grupo, *subgrupo, *ruta;
+	char *grusub1, *grupo1, *subgrupo1;
+	char *sepnoticia, *sepnoticia2;
+	int fechanoticia, horanoticia;
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -430,8 +434,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
-			//TODO: cambiar ruta
-			grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
+			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
 				printf("No se ha podido leer el fichero grupos");
@@ -444,17 +447,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			printf(".\n");
 			fclose(grupos);
 		} //######## NEWGROUPS ###########
-		else if ((strcmp(comando, "NEWGROUPS\r\n") == 0) || (strcmp(comando, "newgroups\r\n") == 0))
+		else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
 		{
-			printf("\n\tUso: <newgroups> <YYMMDD> <HHMMSS>\n\n");
 			strcpy(buf, "231\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
-			recv(s, newgroups, 300, 0);
-			//fprintf(stdout, "Servidor recibe: %s\n", newgroups);
+			recv(s, comando, TAM_COMANDO, 0);
+			//fprintf(stdout, "Servidor recibe: %s\n", comando);
 
-			token = strtok(newgroups, " ");
+			token = strtok(comando, " ");
 			//TODO: no se compara el char * con el char
 			//if ((strcmp(token, "NEWGROUPS") == 0)||(strcmp(token, "newgroups")))
 			if (token != NULL)
@@ -477,7 +479,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 			else
 			{
-				printf("\n501 Error de sintaxis en la fecha. ");
+				printf("\n501 Error de sintaxis. ");
 				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
 			}
 			token = strtok(NULL, " ");
@@ -489,12 +491,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 			else
 			{
-				printf("\n501 Error de sintaxis en la hora. ");
+				printf("\n501 Error de sintaxis. ");
 				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
 			}
 
-			//TODO: cambiar ruta
-			grupos = fopen("/home/esther/Escritorio/Redes/REDES_GII/nntp/noticias/grupos", "rt");
+			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
 				printf("No se ha podido leer el fichero grupos");
@@ -572,12 +573,211 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			fclose(grupos);
 		}
 		//######## NEWNEWS ###########
-		else if ((strcmp(comando, "NEWNEWS\r\n") == 0) || (strcmp(comando, "newnews\r\n") == 0))
+		else if ((strncmp(comando, "NEWNEWS\r\n", 7) == 0) || (strncmp(comando, "newnews\r\n", 7) == 0))
 		{
-			printf("Se ha recibido un NEWNEwS\n");
 			strcpy(buf, "230\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
+
+			recv(s, comando, TAM_COMANDO, 0);
+			//fprintf(stdout, "Servidor recibe: %s\n", comando);
+
+			token = strtok(comando, " ");
+			//TODO: no se compara el char * con el char
+			//if ((strcmp(token, "NEWNEWS") == 0)||(strcmp(token, "newnews")))
+			if (token != NULL)
+			{
+				//"newnews"
+				token2 = token;
+				//printf("\n%s\n", token2);
+			}
+			else
+			{
+				printf("\n501 Error de sintaxis. ");
+				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+			}
+			token = strtok(NULL, " ");
+			if (token != NULL)
+			{
+				//grupo.subgrupo de noticias
+				token5 = token;
+				token6 = token;
+				//printf("%s\n", token5);
+			}
+			else
+			{
+				printf("\n501 Error de sintaxis. ");
+				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+			}
+			token = strtok(NULL, " ");
+			if ((strlen(token) == 6))
+			{
+				//fecha
+				token3 = atoi(token);
+				//printf("%d\n", token3);
+			}
+			else
+			{
+				printf("\n501 Error de sintaxis. ");
+				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+			}
+			token = strtok(NULL, " ");
+			if ((strlen(token) == 6))
+			{
+				//hora
+				token4 = atoi(token);
+				//printf("%d\n", token4);
+			}
+			else
+			{
+				printf("\n501 Error de sintaxis. ");
+				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+			}
+			grusub1 = strtok(token6, ".");
+			if (grusub1 != NULL)
+			{
+				//grupo
+				grupo1 = grusub1;
+				printf("\nNOMBRE GRUPO:%s\n", grupo1);
+			}
+			else
+			{
+				printf("El nombre del grupo esta vacio\n");
+			}
+			grusub1 = strtok(NULL, ".");
+			if (grusub1 != NULL)
+			{
+				//subgrupo
+				subgrupo1 = grusub1;
+				printf("\nNOMBRE SUBGRUPO:%s\n", subgrupo1);
+			}
+			else
+			{
+				printf("El nombre del subgrupo esta vacio\n");
+			}
+
+			grupos = fopen("./noticias/grupos", "rt");
+			if (grupos == NULL)
+			{
+				printf("No se ha podido leer el fichero grupos");
+			}
+
+			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+			{
+				separator = strtok(linea, " ");
+				if (separator != NULL)
+				{
+					//nombre
+					separator2 = separator;
+					separator5 = separator;
+					printf("\nNOMBRE GRUSUB:%s\n", separator2);
+				}
+				else
+				{
+					printf("El nombre del grupo esta vacio\n");
+				}
+				separator = strtok(NULL, " ");
+				if (separator != NULL)
+				{
+					//ultimo
+					separator3 = atoi(separator);
+					printf("\nNUMERO DE ARTICULOS:%d\n", separator3);
+				}
+				else
+				{
+					printf("El numero del ultimo articulo del grupo esta vacio\n");
+				}
+				grusub = strtok(separator5, ".");
+				if (grusub != NULL)
+				{
+					//grupo
+					grupo = grusub;
+					printf("\nNOMBRE GRUPO:%s\n", grupo);
+				}
+				else
+				{
+					printf("El nombre del grupo esta vacio\n");
+				}
+				grusub = strtok(NULL, ".");
+				if (grusub != NULL)
+				{
+					//subgrupo
+					subgrupo = grusub;
+					printf("\nNOMBRE SUBGRUPO:%s\n", subgrupo);
+				}
+				else
+				{
+					printf("El nombre del subgrupo esta vacio\n");
+				}
+				if ((strcmp(grupo, grupo1) == 0) && (strcmp(subgrupo, subgrupo1) == 0))
+				{
+					for (int i = 1; i < separator3; i++)
+					{
+						sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, i);
+						printf("\n\nhola %s\n", ruta);
+						noticia = fopen(ruta, "rt");
+						if (noticia == NULL)
+						{
+							printf("No se ha podido leer el fichero de la noticia");
+						}
+
+						while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+						{
+							sepnoticia = strtok(lineanoticia, " ");
+							if (sepnoticia != NULL)
+							{
+								//nombre
+								sepnoticia2 = sepnoticia;
+								//printf("\n%s\n", sepnoticia2);
+								if ((strcmp(sepnoticia2, "Date:") == 0))
+								{
+									sepnoticia = strtok(NULL, " ");
+									if (sepnoticia != NULL)
+									{
+										//fecha noticia
+										fechanoticia = atoi(sepnoticia);
+										printf("\nFecha del articulo:%d\n", fechanoticia);
+									}
+									else
+									{
+										printf("Fecha del articulo vacia\n");
+									}
+									sepnoticia = strtok(NULL, " ");
+									if (sepnoticia != NULL)
+									{
+										//hora noticia
+										horanoticia = atoi(sepnoticia);
+										printf("\nHora del articulo:%d\n", horanoticia);
+									}
+									else
+									{
+										printf("Hora del articulo vacia\n");
+									}
+								}
+							}
+							else
+							{
+								printf("El fichero noticia esta vacio\n");
+							}
+
+							//si la fecha es mayor, me da igual la hora
+							if (fechanoticia > token3)
+							{
+								printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
+							}
+							//si la fecha es la misma, compruebo la hora
+							if (fechanoticia == token3 && horanoticia >= token4)
+							{
+								printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
+							}
+						}
+					}
+				}else {
+					printf("buenos dias");
+				}
+			}
+
+			fclose(grupos);
 		}
 		//######## POST ###########
 		else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
@@ -656,7 +856,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (num_lineas <= 5)
 						{
 							strncat(body, comando, strlen(comando));
-						} else {
+						}
+						else
+						{
 							printf("Buffer del body lleno\n");
 						}
 						if (strncmp(comando, ".\r\n", 3) == 0)
