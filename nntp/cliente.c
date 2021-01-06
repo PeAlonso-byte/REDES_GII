@@ -580,6 +580,10 @@ void clienteTCP(char *cliente, char *servidor)
                 // Vamos a enviar bloques de 512 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
                 while (strcmp(comando, ".\r\n") != 0)
                 {
+                    int lon = strlen(comando);
+                    for (int k = 0; k < lon; k++) {
+                        comando[k] = '\0';
+                    }
                     fgets(comando, TAM_COMANDO, stdin);
 
                     // Formateamos el comando para que acabe en /r/n
@@ -603,6 +607,15 @@ void clienteTCP(char *cliente, char *servidor)
                         exit(1);
                     }
                 }
+            // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
+                i = recv(s, buf, TAM_BUFFER, 0);
+                if (strcmp(buf, "240\r\n") == 0) {
+                    printf("240 Article received OK\n");
+                } else {
+                   printf("441 Posting failed\n"); 
+                }
+
+
             }
             else
             { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
