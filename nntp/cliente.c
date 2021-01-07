@@ -551,7 +551,7 @@ void clienteTCP(char *cliente, char *servidor)
                 printf("Recibiendo correctamente 231\n");
             }*/
 
-            fflush(stdin);
+            //fflush(stdin);
             //fgets(newgroups, TAM_NG, stdin);
             //printf("\nEnvío desde cliente:%s\n", newgroups);
 
@@ -570,7 +570,74 @@ void clienteTCP(char *cliente, char *servidor)
                 printf("Recibiendo correctamente 230\n");
             }*/
 
-            fflush(stdin);
+            //printf("\nEnvío desde cliente:%s\n", comando);
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
+            }
+        }
+        //######## GROUP ###########
+        else if ((strncmp(comando, "GROUP\r\n", 5) == 0) || (strncmp(comando, "group\r\n", 5) == 0))
+        {
+            /*if (strcmp(buf, "211\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 211\n");
+            }*/
+
+            //printf("\nEnvío desde cliente:%s\n", comando);
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
+            }
+        }
+        //######## ARTICLE ###########
+        else if ((strncmp(comando, "ARTICLE\r\n", 7) == 0) || (strncmp(comando, "article\r\n", 7) == 0))
+        {
+            /*if (strcmp(buf, "223\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 223\n");
+            }*/
+
+            //printf("\nEnvío desde cliente:%s\n", comando);
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
+            }
+        }
+        //######## HEAD ###########
+        else if ((strncmp(comando, "HEAD\r\n", 4) == 0) || (strncmp(comando, "head\r\n", 4) == 0))
+        {
+            /*if (strcmp(buf, "221\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 221\n");
+            }*/
+
+            //printf("\nEnvío desde cliente:%s\n", comando);
+
+            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+            {
+                fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                fprintf(stderr, "on send number %d\n", i);
+                exit(1);
+            }
+        }
+        //######## BODY ###########
+        else if ((strncmp(comando, "BODY\r\n", 4) == 0) || (strncmp(comando, "body\r\n", 4) == 0))
+        {
+            /*if (strcmp(buf, "222\r\n") == 0)
+            {
+                printf("Recibiendo correctamente 222\n");
+            }*/
+
             //printf("\nEnvío desde cliente:%s\n", comando);
 
             if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
