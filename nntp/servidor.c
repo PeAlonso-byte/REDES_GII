@@ -331,6 +331,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *grusub1, *grupo1, *subgrupo1;
 	char *sepnoticia, *sepnoticia2, *numeroId;
 	int fechanoticia, horanoticia;
+	char comandoaux[512];
 
 	int flagExisteGrupo = 0;
 
@@ -1197,6 +1198,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
+			for (int i = 0; i < strlen(header); i++) {
+				header[i] = '\0';
+			}
+			for (int i = 0; i < strlen(body); i++) {
+				body[i] = '\0';
+			}
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
 
 			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
@@ -1241,13 +1248,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						// Podemos cambiar el formato de la fecha si lo deseamos.
 						sprintf(faux, "DATE:%s\n", ctime(&now));
 						strncat(header, faux, strlen(faux));
-
-						fprintf(stdout, "La fecha es : %s\n", faux);
 					}
 				}
 				if (flag == 0)
 				{ // HEADER
-					fprintf(stdout, "Comando: %s\n", comando);
+					strcpy(comandoaux, comando);
 
 					separator = strtok(comando, ":");
 					if (separator == NULL)
@@ -1278,11 +1283,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 						fclose(grupos);
 						if (flagExisteGrupo == 1)
-						{
-							printf("Guardando comando\n");
-							fprintf(stdout, "%s\n", comando);
-							
-							strncat(header, comando, strlen(comando));
+						{							
+							strncat(header, comandoaux, strlen(comandoaux));
 							flagHeader++;
 						}
 						else
@@ -1292,23 +1294,21 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					}
 					else if ((strncmp(comando, "SUBJECT", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
 					{
-						printf("Guardando comando\n");
-						fprintf(stdout, "%s\n", comando);
-						strncat(header, comando, strlen(comando));
+
+						strncat(header, comandoaux, strlen(comandoaux));
 						flagHeader++;
 					}
 				}
 				else
 				{ // Esto es el body
 					num_lineas++;
-					fprintf(stdout, "%s", header);
 					if (num_lineas <= 5)
 					{
 						strncat(body, comando, strlen(comando));
 					}
 					else
 					{
-						printf("Buffer del body lleno\n");
+						//printf("Buffer del body lleno\n");
 					}
 					if (strncmp(comando, ".\r\n", 3) == 0)
 					{
