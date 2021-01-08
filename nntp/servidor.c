@@ -303,6 +303,7 @@ char *argv[];
  */
 void serverTCP(int s, struct sockaddr_in clientaddr_in)
 {
+	time_t now;
 	int flagHeader = 0; // Tiene que valer 2 para que el header este completo.
 	int flag = 0;		// 0 = HEADER; 1 = BODY
 	int flagGrupo = 0;
@@ -958,7 +959,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			//printf("Hola");
 			//printf("Hola%d", flagGrupo);
 
-			if (flagGrupo ==0)
+			if (flagGrupo == 0)
 			{
 				printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 			}
@@ -1223,9 +1224,31 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				if (strncmp(comando, "\r\n", 2) == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 				{
 					flag = 1;
+					if (flagHeader == 2)
+					{
+						time(&now);
+						char faux[200];
+						struct tm *local = localtime(&now);
+
+						int hours = local->tm_hour;	 // get hours since midnight (0-23)
+						int minutes = local->tm_min; // get minutes passed after the hour (0-59)
+						int seconds = local->tm_sec; // get seconds passed after minute (0-59)
+
+						int day = local->tm_mday;	   // get day of month (1 to 31)
+						int month = local->tm_mon + 1; // get month of year (0 to 11)
+						int year = local->tm_year + 1900;
+
+						// Podemos cambiar el formato de la fecha si lo deseamos.
+						sprintf(faux, "DATE:%s\n", ctime(&now));
+						strncat(header, faux, strlen(faux));
+
+						fprintf(stdout, "La fecha es : %s\n", faux);
+					}
 				}
 				if (flag == 0)
 				{ // HEADER
+					fprintf(stdout, "Comando: %s\n", comando);
+
 					separator = strtok(comando, ":");
 					if (separator == NULL)
 					{
@@ -1246,7 +1269,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
 						{
 							separator1 = strtok(linea, " "); // Grupo en el fichero
-							fprintf(stdout, "Se esta comparando : (c)%s -- > (s)%s\n", separator, separator1);
+							//fprintf(stdout, "Se esta comparando : (c)%s -- > (s)%s\n", separator, separator1);
 							if (strncmp(separator, separator1, strlen(separator1)) == 0)
 							{
 								flagExisteGrupo = 1;
@@ -1256,24 +1279,29 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						fclose(grupos);
 						if (flagExisteGrupo == 1)
 						{
+							printf("Guardando comando\n");
+							fprintf(stdout, "%s\n", comando);
+							
 							strncat(header, comando, strlen(comando));
 							flagHeader++;
 						}
 						else
 						{
-							printf("Grupo no encontrado\n");
+							//printf("Grupo no encontrado\n");
 						}
 					}
 					else if ((strncmp(comando, "SUBJECT", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
 					{
+						printf("Guardando comando\n");
+						fprintf(stdout, "%s\n", comando);
 						strncat(header, comando, strlen(comando));
 						flagHeader++;
 					}
 				}
 				else
 				{ // Esto es el body
-
 					num_lineas++;
+					fprintf(stdout, "%s", header);
 					if (num_lineas <= 5)
 					{
 						strncat(body, comando, strlen(comando));
@@ -1286,18 +1314,21 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					{
 						num_lineas = 0;
 						if (flagHeader != 2)
-						{ // Quiere decir que el header no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
+						{ // Quiere decir que el articulo no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
 							strcpy(buf, "441\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
 						}
 						else
 						{
+
 							strcpy(buf, "240\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
 						}
 						flagHeader = 0;
+						flag = 0;
+						break;
 					}
 				}
 			}
