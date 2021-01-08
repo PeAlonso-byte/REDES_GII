@@ -481,7 +481,7 @@ void clienteTCP(char *cliente, char *servidor)
     while (1)
     {
 
-        printf("Escribe el comando que deseas enviar al servidor: ");
+        printf("Escribe el comando que deseas enviar al servidor: \n");
         fgets(comando, TAM_COMANDO, stdin);
         if ((strcmp(comando, "QUIT\r\n") == 0 || strcmp(comando, "quit\r\n") == 0)) {
             
