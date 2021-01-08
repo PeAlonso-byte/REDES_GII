@@ -331,6 +331,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *sepnoticia, *sepnoticia2, *numeroId;
 	int fechanoticia, horanoticia;
 
+	int flagExisteGrupo = 0;
+
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
 	 * was returned by the accept call, in the main
@@ -1196,94 +1198,119 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				errout(hostname);
 
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
+
 			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
-			while (strncmp(comando, ".\r\n", 3) != 0) // En este bucle entra, pero en el siguiente ya no.
+			//while (strncmp(comando, ".\r\n", 3) != 0)
+			//{
+
+			while (len = recv(s, comando, TAM_COMANDO, 0))
 			{
 
-				// Vamos recibiendo los comandos
-				//printf("Esperando a recibir comandos \n"); // Provoca un bucle infinito.
-				//len = recv(s, comando, TAM_COMANDO, 0);
-				//fprintf(stdout, "Se ha recibido el comando : %s\n", comando);
+				if (len == -1)
+					errout(hostname); // error from recv
 
-				while (len = recv(s, comando, TAM_COMANDO, 0))
+				while (len < TAM_COMANDO)
 				{
+					len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
+					if (len1 == -1)
+						errout(hostname);
+					len += len1;
+				}
+				// Increment the request count.
+				reqcnt++;
+				comando[len] = '\0';
+				// This sleep simulates the processing of the request that a real server might do.
 
-					if (len == -1)
-						errout(hostname); // error from recv
-
-					while (len < TAM_COMANDO)
+				if (strncmp(comando, "\r\n", 2) == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
+				{
+					flag = 1;
+				}
+				if (flag == 0)
+				{ // HEADER
+					separator = strtok(comando, ":");
+					if (separator == NULL)
 					{
-						len1 = recv(s, &comando[len], TAM_COMANDO - len, 0);
-						if (len1 == -1)
-							errout(hostname);
-						len += len1;
+						printf("Error sintaxis.");
+						// Enviar codigo de error al cliente.
 					}
-					// Increment the request count.
-					reqcnt++;
-					comando[len] = '\0';
-					// This sleep simulates the processing of the request that a real server might do.
-
-					if (strncmp(comando, "\r\n", 2) == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
+					if ((strncmp(separator, "NEWSGROUPS", strlen(separator)) == 0 || strncmp(separator, "newsgroups", strlen(separator)) == 0) && flagHeader == 0)
 					{
+						separator = strtok(NULL, ":"); // Avanzamos para ver el grupo que ha mandado el cliente.
+						flagExisteGrupo = 0;
 
+						grupos = fopen("./noticias/grupos", "rt"); // Leemos todos los grupos que existen.
+						if (grupos == NULL)
+						{
+							printf("No se ha podido leer el fichero grupos");
+							// Mandar mensaje de error al cliente.
+						}
+						while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+						{
+							separator1 = strtok(linea, " "); // Grupo en el fichero
+							fprintf(stdout, "Se esta comparando : (c)%s -- > (s)%s\n", separator, separator1);
+							if (strncmp(separator, separator1, strlen(separator1)) == 0)
+							{
+								flagExisteGrupo = 1;
+								break;
+							}
+						}
+						fclose(grupos);
+						if (flagExisteGrupo == 1)
+						{
+							strncat(header, comando, strlen(comando));
+							flagHeader++;
+						}
+						else
+						{
+							printf("Grupo no encontrado\n");
+						}
+						
+					}
+					else if ((strncmp(comando, "SUBJECT", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
+					{
+						strncat(header, comando, strlen(comando));
+						flagHeader++;
+					}
+				}
+				else
+				{ // Esto es el body
+
+					num_lineas++;
+					if (num_lineas <= 5)
+					{
+						strncat(body, comando, strlen(comando));
+					}
+					else
+					{
+						printf("Buffer del body lleno\n");
+					}
+					if (strncmp(comando, ".\r\n", 3) == 0)
+					{
+						num_lineas = 0;
 						if (flagHeader != 2)
 						{ // Quiere decir que el header no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
-							printf("Error 441\n");
 							strcpy(buf, "441\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
-							break; // Salimos del bucle
-						}
-						flag = 1;
-					}
-					if (flag == 0)
-					{ // HEADER
-						if ((strncmp(comando, "Newsgroups", 10) == 0 || strncmp(comando, "newsgroups", 10) == 0) && flagHeader == 0)
-						{
-							strncat(header, comando, strlen(comando));
-							flagHeader++;
-						}
-						else if ((strncmp(comando, "Subject", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
-						{
-							strncat(header, comando, strlen(comando));
-							flagHeader++;
-						}
-						else if (flagHeader == 2)
-						{
-							printf("Header completo introduzca /n para pasar al body\n");
+							
 						}
 						else
-						{
-							printf("Etiqueta erronea, envie otra\n");
-						}
-					}
-					else
-					{ // Esto es el body
-
-						num_lineas++;
-						if (num_lineas <= 5)
-						{
-							strncat(body, comando, strlen(comando));
-						}
-						else
-						{
-							printf("Buffer del body lleno\n");
-						}
-						if (strncmp(comando, ".\r\n", 3) == 0)
 						{
 							strcpy(buf, "240\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
-							break;
+							
 						}
+						flagHeader = 0;
 					}
 				}
 			}
+			//}
 		} // ######### QUIT ########## Creo que es innecesario en el servidor.s
 		else if ((strcmp(comando, "QUIT\r\n") == 0) || (strcmp(comando, "quit\r\n") == 0))
 		{
 			// Falta por implementar.
-			printf("Apagando el servidor\n");
+			// Enviar mensaje de salida del cliente.
 		}
 		else
 		{

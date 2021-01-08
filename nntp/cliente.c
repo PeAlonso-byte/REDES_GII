@@ -478,12 +478,16 @@ void clienteTCP(char *cliente, char *servidor)
 
     /* PRUEBA COMANDO POST */
     char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
-    while (strcmp(comando, "QUIT\r\n") != 0 && strcmp(comando, "quit\r\n") != 0)
+    while (1)
     {
 
         printf("Escribe el comando que deseas enviar al servidor: ");
         fgets(comando, TAM_COMANDO, stdin);
-
+        if ((strcmp(comando, "QUIT\r\n") == 0 || strcmp(comando, "quit\r\n") == 0)) {
+            
+            printf("Saliendo del servidor...\n");
+            break;
+        }
         // CODIGO PARA AÑADIR EL \R\N A LOS COMANDOS
 
         //int tmp = 0;
