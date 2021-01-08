@@ -332,7 +332,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *sepnoticia, *sepnoticia2, *numeroId;
 	int fechanoticia, horanoticia;
 	char comandoaux[512];
-
+	char messageID[512];
 	int flagExisteGrupo = 0;
 
 	/* Look up the host information for the remote host
@@ -1204,6 +1204,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			for (int i = 0; i < strlen(body); i++) {
 				body[i] = '\0';
 			}
+			for (int i = 0; i < strlen(messageID); i++) {
+				messageID[i] = '\0';
+			}
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
 
 			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */
@@ -1246,7 +1249,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						int year = local->tm_year + 1900;
 
 						// Podemos cambiar el formato de la fecha si lo deseamos.
-						sprintf(faux, "DATE:%s\n", ctime(&now));
+						sprintf(faux, "Date:%s", ctime(&now));
 						strncat(header, faux, strlen(faux));
 					}
 				}
@@ -1260,7 +1263,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						printf("Error sintaxis.");
 						// Enviar codigo de error al cliente.
 					}
-					if ((strncmp(separator, "NEWSGROUPS", strlen(separator)) == 0 || strncmp(separator, "newsgroups", strlen(separator)) == 0) && flagHeader == 0)
+					if ((strncmp(separator, "Newsgroups", strlen(separator)) == 0 || strncmp(separator, "newsgroups", strlen(separator)) == 0) && flagHeader == 0)
 					{
 						separator = strtok(NULL, ":"); // Avanzamos para ver el grupo que ha mandado el cliente.
 						flagExisteGrupo = 0;
@@ -1292,7 +1295,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							//printf("Grupo no encontrado\n");
 						}
 					}
-					else if ((strncmp(comando, "SUBJECT", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
+					else if ((strncmp(comando, "Subject", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
 					{
 
 						strncat(header, comandoaux, strlen(comandoaux));
@@ -1321,7 +1324,32 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 						else
 						{
+							/* Aqui tengo que ir a la ruta y escribir la noticia, tmb tengo que recoger el numero de n_articulos y aumentarlo. */
+							/* Actualizamos n_articulos */
 
+							f = fopen("./noticias/n_articulos", "r+");
+							int num_art = 0;
+							if (f == NULL) {
+								printf("Error al abrir el fichero.\n");
+							}
+							fscanf (f, "%d", &num_art);
+							num_art++; 
+							rewind(f);
+							fprintf(f, "%d", num_art);
+							fclose(f);
+
+							/* Fin actualizar n_articulos.*/
+
+							/* Añadimos el Message-ID: <X@nogal.usal.es> al header */
+
+							sprintf(messageID, "Message-ID:<%d@%s>\n", num_art, hostname);
+							strcat(header, messageID);
+
+							/* Fin añadir Message-ID */	
+
+							/* Editar numero de articulos en el grupo y escribir */
+
+							/* Fin de editar numero de articulos y escribir.*/				
 							strcpy(buf, "240\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
