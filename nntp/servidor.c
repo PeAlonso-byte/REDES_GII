@@ -307,6 +307,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int flagHeader = 0; // Tiene que valer 2 para que el header este completo.
 	int flag = 0;		// 0 = HEADER; 1 = BODY
 	int flagGrupo = 0;
+	int flagN=1; 
+	int flagB=0;
 	int reqcnt = 0;					/* keeps count of number of requests */
 	char buf[TAM_BUFFER];			/* This example uses TAM_BUFFER byte messages. */
 	char hostname[MAXHOST];			/* remote host's name string */
@@ -1105,13 +1107,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 					}
 					rewind(noticia);
-					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia) && flagN)
 					{
-						//while (lineanoticia != "\n\n")
-						while((strcmp(lineanoticia, "\n\n") != 0))
+						if (!strcmp(lineanoticia, "\r\n") || !strcmp(lineanoticia, "\n"))
 						{
-							printf("%s", lineanoticia); //AQUI
-						}						
+							flagN = 0;
+						}
+						else
+						{
+							printf("%s", lineanoticia);
+						}
 					}
 					fclose(noticia);
 				}
@@ -1203,11 +1208,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					rewind(noticia);
 					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						//while (lineanoticia != "\n\n")
-						while((strcmp(lineanoticia, "\n\n") != 0))
-						{
-							printf("%s", lineanoticia); //AQUI  
-						}						
+						if(!strcmp(lineanoticia, "\r\n")||!strcmp(lineanoticia, "\n")){
+							flagB=1;
+						} else if(flagB) {
+							printf("%s", lineanoticia);
+						}	
+						
 					}
 					fclose(noticia);
 				}
