@@ -1206,7 +1206,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						//while (lineanoticia != "\n\n")
 						while((strcmp(lineanoticia, "\n\n") != 0))
 						{
-						
 							printf("%s", lineanoticia); //AQUI
 						}						
 					}
