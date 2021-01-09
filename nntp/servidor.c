@@ -713,7 +713,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					printf("El nombre del subgrupo esta vacio\n");
 				}
-				//TODO: no va la comparacion de char *
+				//A partir de aqui se queda bloqueado
+				printf("\n%s%s%s%s", grupo, grupo1, subgrupo, subgrupo1);	//no llega ni a imprimir esta linea
 				//if ((strcmp(grupo, grupo1 == 0) && (strcmp(subgrupo, subgrupo1)) == 0))
 				if ((strncmp(grupo, grupo1, strlen(grupo1)) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo1)) == 0))
 				{
@@ -913,6 +914,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					printf("211 %d %d %d %s.%s", separator3, separator3, separator4, grupo, subgrupo);
 					printf("\n\t(hay %d articulos, del %d al %d, en %s.%s)\n", separator3, separator4, separator3, grupo, subgrupo);
+					printf(".\n");
 					flagGrupo = 1;
 				}
 				else if ((strcmp(grupo, grupo1) != 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo)) != 0))
@@ -957,18 +959,26 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				printf("\n501 Error de sintaxis. ");
 				printf("Uso: Uso: <article> <numero_articulo>\n");
 			}
-			//printf("Hola");
-			//printf("Hola%d", flagGrupo);
 
-			if (flagGrupo == 0)
+			printf("\n%d\n", flagGrupo);
+			//para forzar que la ruta funcione
+			grupo="local";
+			subgrupo="redes";
+
+			//deberia ser == 0 pero lo pongo a 1 para forzar que entre en el else
+			if (flagGrupo == 1)
 			{
 				printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 			}
 			else
 			{
-				sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
-				//sprintf(ruta, "./noticias/articulos/local/redes/%d", token3);
+				printf("\%d\n", token3);
+				//sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
+				//printf("%s", ruta);
+				sprintf(ruta, "./noticias/articulos/local/redes/%d", token3);
+				printf("%s", ruta);	//no imprime
 				noticia = fopen(ruta, "rt");
+
 				if (noticia == NULL)
 				{
 					printf("\n430 No se encuentra ese articulo en %s.%s\n", grupo, subgrupo);
