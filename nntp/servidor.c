@@ -307,8 +307,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int flagHeader = 0; // Tiene que valer 2 para que el header este completo.
 	int flag = 0;		// 0 = HEADER; 1 = BODY
 	int flagGrupo = 0;
-	int flagN=1; 
-	int flagB=0;
 	int reqcnt = 0;					/* keeps count of number of requests */
 	char buf[TAM_BUFFER];			/* This example uses TAM_BUFFER byte messages. */
 	char hostname[MAXHOST];			/* remote host's name string */
@@ -335,9 +333,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *sepnoticia, *sepnoticia2, *numeroId;
 	int fechanoticia, horanoticia;
 	char comandoaux[512];
+	char lineaux[512];
 	char messageID[512];
+	char grupo_aux[512];
+	char num_aux[12];
 	int flagExisteGrupo = 0;
 	int contador = 0;
+	int n;
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -1107,15 +1109,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 					}
 					rewind(noticia);
-					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia) && flagN)
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						if (!strcmp(lineanoticia, "\r\n") || !strcmp(lineanoticia, "\n"))
+						//while (lineanoticia != "\n\n")
+						while ((strcmp(lineanoticia, "\n\n") != 0))
 						{
-							flagN = 0;
-						}
-						else
-						{
-							printf("%s", lineanoticia);
+							printf("%s", lineanoticia); //AQUI
 						}
 					}
 					fclose(noticia);
@@ -1208,12 +1207,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					rewind(noticia);
 					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						if(!strcmp(lineanoticia, "\r\n")||!strcmp(lineanoticia, "\n")){
-							flagB=1;
-						} else if(flagB) {
-							printf("%s", lineanoticia);
-						}	
-						
+						//while (lineanoticia != "\n\n")
+						while ((strcmp(lineanoticia, "\n\n") != 0))
+						{
+							printf("%s", lineanoticia); //AQUI
+						}
 					}
 					fclose(noticia);
 				}
@@ -1223,6 +1221,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
 		{
 			printf("Se ha recibido un POST\n");
+			n = 0;
 			strcpy(buf, "340\r\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
@@ -1238,6 +1237,22 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			for (int i = 0; i < strlen(messageID); i++)
 			{
 				messageID[i] = '\0';
+			}
+			for (int i = 0; i < strlen(grupo_aux); i++)
+			{
+				grupo_aux[i] = '\0';
+			}
+			for (int i = 0; i < strlen(num_aux); i++)
+			{
+				num_aux[i] = '\0';
+			}
+			for (int i = 0; i < strlen(lineaux); i++)
+			{
+				lineaux[i] = '\0';
+			}
+			for (int i = 0; i < strlen(ruta); i++)
+			{
+				ruta[i] = '\0';
 			}
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
 
@@ -1270,6 +1285,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					{
 						time(&now);
 						char faux[200];
+						char format_date[100];
 						struct tm *local = localtime(&now);
 
 						int hours = local->tm_hour;	 // get hours since midnight (0-23)
@@ -1281,7 +1297,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						int year = local->tm_year + 1900;
 
 						// Podemos cambiar el formato de la fecha si lo deseamos.
-						sprintf(faux, "Date:%s", ctime(&now));
+						strftime(format_date, 100, "%a, %d %b %Y %H:%M:%S (%Z)", local);
+						sprintf(faux, "Date: %d%d%d %d%d%d %s\n", year, month, day, hours, minutes, seconds, format_date);
 						strncat(header, faux, strlen(faux));
 					}
 				}
@@ -1289,15 +1306,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{ // HEADER
 					strcpy(comandoaux, comando);
 
-					separator = strtok(comando, ":");
+					separator = strtok(comando, " ");
 					if (separator == NULL)
 					{
 						printf("Error sintaxis.");
 						// Enviar codigo de error al cliente.
 					}
-					if ((strncmp(separator, "Newsgroups", strlen(separator)) == 0 || strncmp(separator, "newsgroups", strlen(separator)) == 0) && flagHeader == 0)
+					if ((strncmp(separator, "Newsgroups:", strlen(separator)) == 0 || strncmp(separator, "newsgroups:", strlen(separator)) == 0) && flagHeader == 0)
 					{
-						separator = strtok(NULL, ":"); // Avanzamos para ver el grupo que ha mandado el cliente.
+						separator = strtok(NULL, " "); // Avanzamos para ver el grupo que ha mandado el cliente.
 						flagExisteGrupo = 0;
 
 						grupos = fopen("./noticias/grupos", "rt"); // Leemos todos los grupos que existen.
@@ -1312,6 +1329,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							//fprintf(stdout, "Se esta comparando : (c)%s -- > (s)%s\n", separator, separator1);
 							if (strncmp(separator, separator1, strlen(separator1)) == 0)
 							{
+								strcpy(grupo_aux, separator1);
+
 								flagExisteGrupo = 1;
 								break;
 							}
@@ -1327,7 +1346,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							//printf("Grupo no encontrado\n");
 						}
 					}
-					else if ((strncmp(comando, "Subject", 7) == 0 || strncmp(comando, "subject", 7) == 0) && flagHeader == 1)
+					else if ((strncmp(comando, "Subject:", 8) == 0 || strncmp(comando, "subject:", 8) == 0) && flagHeader == 1)
 					{
 
 						strncat(header, comandoaux, strlen(comandoaux));
@@ -1375,14 +1394,68 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 							/* Añadimos el Message-ID: <X@nogal.usal.es> al header */
 
-							sprintf(messageID, "Message-ID:<%d@%s>\n", num_art, hostname);
+							sprintf(messageID, "Message-ID: <%d@%s>\n", num_art, hostname);
 							strcat(header, messageID);
 
 							/* Fin añadir Message-ID */
 
 							/* Editar numero de articulos en el grupo y escribir */
+							grupos = fopen("./noticias/grupos", "r+"); // Leemos todos los grupos que existen.
+							if (grupos == NULL)
+							{
+								printf("No se ha podido leer el fichero grupos");
+								// Mandar mensaje de error al cliente.
+							}
+							rewind(grupos);
 
+							while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+							{
+								strcpy(lineaux, linea);
+
+								separator1 = strtok(linea, " ");							 // Grupo en el fichero
+								if (strncmp(grupo_aux, separator1, strlen(separator1)) == 0) // Estamos en la linea que queremos.
+								{
+									separator1 = strtok(NULL, " ");
+									n = atoi(separator1);
+									n++;
+									sprintf(num_aux, "%.10d", n);
+									int flagCopia = 0;
+									for (int i = 0; i < strlen(lineaux); i++)
+									{
+										if (lineaux[i] == ' ')
+										{
+											for (int j = 0; j < strlen(num_aux); j++)
+											{
+												i++;
+												lineaux[i] = num_aux[j];
+											}
+											break;
+										}
+									}
+									break;
+								}
+							}
+							fseek(grupos, -(strlen(lineaux)), SEEK_CUR);
+							fclose(grupos);
 							/* Fin de editar numero de articulos y escribir.*/
+
+							/* Creacion del articulo */
+							for (int i = 0; i < strlen(grupo_aux); i++)
+							{
+								if (grupo_aux[i] == '.')
+								{
+									grupo_aux[i] = '/';
+								}
+							}
+							sprintf(ruta, "./noticias/articulos/%s/%d", grupo_aux, n);
+							f = fopen(ruta, "w");
+							if (f == NULL)
+							{
+								printf("Error al crear el fichero\n");
+							}
+							fprintf(f, "%s%s", header, body);
+							fclose(f);
+							/* Fin de creacion del articulo */
 							strcpy(buf, "240\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
@@ -1393,7 +1466,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					}
 				}
 			}
-			//}
 		} // ######### QUIT ########## Creo que es innecesario en el servidor.s
 		else if ((strcmp(comando, "QUIT\r\n") == 0) || (strcmp(comando, "quit\r\n") == 0))
 		{
