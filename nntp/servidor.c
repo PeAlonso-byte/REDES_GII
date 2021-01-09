@@ -327,7 +327,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int token3, token4;
 	char *separator, *separator1, *separator2, *separator5;
 	int separator3, separator4;
-	char *grusub, *grupo, *subgrupo, *ruta;
+	char *grusub, *grupo, *subgrupo;
+	char ruta[100];
 	char *grusub1, *grupo1, *subgrupo1;
 	char *sepnoticia, *sepnoticia2, *numeroId;
 	int fechanoticia, horanoticia;
@@ -972,6 +973,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 			else
 			{
+				//*****************************************
+				//DUDA RESUELTA DESPUES DE MANDAR EL CORREO
+				//*****************************************
 				printf("\%d\n", token3);
 				//sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
 				//printf("%s", ruta);
