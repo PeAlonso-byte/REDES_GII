@@ -317,7 +317,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	FILE *f, *grupos, *noticia;
 	int num_lineas = 0;
 	char linea[TAM_COMANDO];
-	char lineanoticia[TAM_COMANDO], lineanoticia2[TAM_COMANDO];
+	char lineanoticia[TAM_COMANDO], lineanoticia2[TAM_COMANDO], lineanoticia3[TAM_COMANDO];
 	char header[TAM_COMANDO];
 	char body[TAM_COMANDO * 5]; // Solo se van a poder enviar 5 lineas de body.
 	struct linger linger;		/* allow a lingering, graceful close; */
@@ -335,6 +335,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char comandoaux[512];
 	char messageID[512];
 	int flagExisteGrupo = 0;
+	int contador = 0;
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -715,7 +716,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					printf("El nombre del subgrupo esta vacio\n");
 				}
 				//A partir de aqui se queda bloqueado
-				printf("\n%s%s%s%s", grupo, grupo1, subgrupo, subgrupo1);	//no llega ni a imprimir esta linea
+				printf("\n%s%s%s%s", grupo, grupo1, subgrupo, subgrupo1); //no llega ni a imprimir esta linea
 				//if ((strcmp(grupo, grupo1 == 0) && (strcmp(subgrupo, subgrupo1)) == 0))
 				if ((strncmp(grupo, grupo1, strlen(grupo1)) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo1)) == 0))
 				{
@@ -852,6 +853,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				printf("No se ha podido leer el fichero grupos");
 			}
 
+			flagGrupo = 0;
+
 			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
 			{
 				separator = strtok(linea, " ");
@@ -941,7 +944,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				//"article"
 				token2 = token;
-				printf("\n%s\n", token2);
+				//printf("\n%s\n", token2);
 			}
 			else
 			{
@@ -953,7 +956,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				//numero articulo
 				token3 = atoi(token);
-				printf("%d\n", token3);
+				//printf("%d\n", token3);
 			}
 			else
 			{
@@ -961,26 +964,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				printf("Uso: Uso: <article> <numero_articulo>\n");
 			}
 
-			printf("\n%d\n", flagGrupo);
-			//para forzar que la ruta funcione
-			grupo="local";
-			subgrupo="redes";
-
-			//deberia ser == 0 pero lo pongo a 1 para forzar que entre en el else
-			if (flagGrupo == 1)
+			if (flagGrupo == 0)
 			{
 				printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 			}
 			else
 			{
-				//*****************************************
-				//DUDA RESUELTA DESPUES DE MANDAR EL CORREO
-				//*****************************************
-				printf("\%d\n", token3);
-				//sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
+				sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
 				//printf("%s", ruta);
-				sprintf(ruta, "./noticias/articulos/local/redes/%d", token3);
-				printf("%s", ruta);	//no imprime
 				noticia = fopen(ruta, "rt");
 
 				if (noticia == NULL)
@@ -991,25 +982,19 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						for (int j = 0; j <= TAM_COMANDO; j++)
-						{
-							lineanoticia2[j] = lineanoticia[j];
-						}
+						strcpy(lineanoticia2, lineanoticia);
 
 						sepnoticia = strtok(lineanoticia2, " ");
 						if (sepnoticia != NULL)
 						{
-							//nombre
-							//sepnoticia2 = sepnoticia;
-							//printf("\n%s\n", sepnoticia2);
 							if ((strcmp(sepnoticia, "Message-ID:") == 0))
 							{
 								sepnoticia = strtok(NULL, " ");
 								if (sepnoticia != NULL)
 								{
 									//<numero@nogal.usal.es>
-									//numeroId = sepnoticia;
-									printf("\nIdentificador %s\n", sepnoticia);
+									numeroId = sepnoticia;
+									//printf("\nIdentificador %s\n", numeroId);
 								}
 								else
 								{
@@ -1021,10 +1006,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						{
 							printf("El fichero noticia esta vacio\n");
 						}
-
-						printf("\n223 %d %s articulo recuperado\n", token3, sepnoticia);
+						if (numeroId != NULL && contador == 0)
+						{
+							printf("\n223 %d %sarticulo recuperado\n\n", token3, numeroId);
+							contador = 1;
+						}
+					}
+					rewind(noticia);
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+					{
 						printf("%s", lineanoticia);
 					}
+					fclose(noticia);
 				}
 			}
 		}
@@ -1037,12 +1030,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			recv(s, comando, TAM_COMANDO, 0);
 			//fprintf(stdout, "Servidor recibe: %s\n", comando);
+
 			token = strtok(comando, " ");
-			//TODO: no se compara el char * con el char
-			//if ((strcmp(token, "GROUP") == 0)||(strcmp(token, "group")))
 			if (token != NULL)
 			{
-				//"head"
+				//"article"
 				token2 = token;
 				//printf("\n%s\n", token2);
 			}
@@ -1071,48 +1063,57 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			else
 			{
 				sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
+				//printf("%s", ruta);
 				noticia = fopen(ruta, "rt");
+
 				if (noticia == NULL)
 				{
-					printf("No se ha podido leer el fichero de la noticia");
+					printf("\n430 No se encuentra ese articulo en %s.%s\n", grupo, subgrupo);
 				}
-
-				while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+				else
 				{
-					for (int j = 0; j <= TAM_COMANDO; j++)
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						lineanoticia[j] = lineanoticia2[j];
-					}
+						strcpy(lineanoticia2, lineanoticia);
 
-					sepnoticia = strtok(lineanoticia2, " ");
-					if (sepnoticia != NULL)
-					{
-						//nombre
-						sepnoticia2 = sepnoticia;
-						//printf("\n%s\n", sepnoticia2);
-						if ((strcmp(sepnoticia2, "Message-ID:") == 0))
+						sepnoticia = strtok(lineanoticia2, " ");
+						if (sepnoticia != NULL)
 						{
-							sepnoticia = strtok(NULL, " ");
-							if (sepnoticia != NULL)
+							if ((strcmp(sepnoticia, "Message-ID:") == 0))
 							{
-								//<numero@nogal.usal.es>
-								numeroId = sepnoticia;
-								printf("\nIdentificador %s\n", numeroId);
-							}
-							else
-							{
-								printf("ID del articulo vacio\n");
+								sepnoticia = strtok(NULL, " ");
+								if (sepnoticia != NULL)
+								{
+									//<numero@nogal.usal.es>
+									numeroId = sepnoticia;
+									//printf("\nIdentificador %s\n", numeroId);
+								}
+								else
+								{
+									printf("ID del articulo vacio\n");
+								}
 							}
 						}
+						else
+						{
+							printf("El fichero noticia esta vacio\n");
+						}
+						if (numeroId != NULL && contador == 0)
+						{
+							printf("\n223 %d %sarticulo recuperado\n\n", token3, numeroId);
+							contador = 1;
+						}
 					}
-					else
+					rewind(noticia);
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						printf("El fichero noticia esta vacio\n");
+						//while (lineanoticia != "\n\n")
+						while((strcmp(lineanoticia, "\n\n") != 0))
+						{
+							printf("%s", lineanoticia); //AQUI
+						}						
 					}
-
-					printf("\n221 %d %s cabecera del articulo recuperada\n", token3, numeroId);
-					//TODO: no hay que mostrar todo el fichero, solo las 4 primeras lineas (la cabecera)
-					printf("%s", lineanoticia);
+					fclose(noticia);
 				}
 			}
 		}
@@ -1125,12 +1126,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			recv(s, comando, TAM_COMANDO, 0);
 			//fprintf(stdout, "Servidor recibe: %s\n", comando);
+
 			token = strtok(comando, " ");
-			//TODO: no se compara el char * con el char
-			//if ((strcmp(token, "GROUP") == 0)||(strcmp(token, "group")))
 			if (token != NULL)
 			{
-				//"body"
+				//"article"
 				token2 = token;
 				//printf("\n%s\n", token2);
 			}
@@ -1159,48 +1159,57 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			else
 			{
 				sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, token3);
+				//printf("%s", ruta);
 				noticia = fopen(ruta, "rt");
+
 				if (noticia == NULL)
 				{
-					printf("No se ha podido leer el fichero de la noticia");
+					printf("\n430 No se encuentra ese articulo en %s.%s\n", grupo, subgrupo);
 				}
-
-				while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+				else
 				{
-					for (int j = 0; j <= TAM_COMANDO; j++)
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						lineanoticia[j] = lineanoticia2[j];
-					}
+						strcpy(lineanoticia2, lineanoticia);
 
-					sepnoticia = strtok(lineanoticia2, " ");
-					if (sepnoticia != NULL)
-					{
-						//nombre
-						sepnoticia2 = sepnoticia;
-						//printf("\n%s\n", sepnoticia2);
-						if ((strcmp(sepnoticia2, "Message-ID:") == 0))
+						sepnoticia = strtok(lineanoticia2, " ");
+						if (sepnoticia != NULL)
 						{
-							sepnoticia = strtok(NULL, " ");
-							if (sepnoticia != NULL)
+							if ((strcmp(sepnoticia, "Message-ID:") == 0))
 							{
-								//<numero@nogal.usal.es>
-								numeroId = sepnoticia;
-								printf("\nIdentificador %s\n", numeroId);
-							}
-							else
-							{
-								printf("ID del articulo vacio\n");
+								sepnoticia = strtok(NULL, " ");
+								if (sepnoticia != NULL)
+								{
+									//<numero@nogal.usal.es>
+									numeroId = sepnoticia;
+									//printf("\nIdentificador %s\n", numeroId);
+								}
+								else
+								{
+									printf("ID del articulo vacio\n");
+								}
 							}
 						}
+						else
+						{
+							printf("El fichero noticia esta vacio\n");
+						}
+						if (numeroId != NULL && contador == 0)
+						{
+							printf("\n223 %d %sarticulo recuperado\n\n", token3, numeroId);
+							contador = 1;
+						}
 					}
-					else
+					rewind(noticia);
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						printf("El fichero noticia esta vacio\n");
+						//while (lineanoticia != "\n\n")
+						while((strcmp(lineanoticia, "\n\n") != 0))
+						{
+							printf("%s", lineanoticia); //AQUI
+						}						
 					}
-
-					printf("\n222 %d %s cuerpo del articulo recuperado\n", token3, numeroId);
-					//TODO: no hay que mostrar todo el articulo solo el body
-					printf("%s", lineanoticia);
+					fclose(noticia);
 				}
 			}
 		}
@@ -1212,13 +1221,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
-			for (int i = 0; i < strlen(header); i++) {
+			for (int i = 0; i < strlen(header); i++)
+			{
 				header[i] = '\0';
 			}
-			for (int i = 0; i < strlen(body); i++) {
+			for (int i = 0; i < strlen(body); i++)
+			{
 				body[i] = '\0';
 			}
-			for (int i = 0; i < strlen(messageID); i++) {
+			for (int i = 0; i < strlen(messageID); i++)
+			{
 				messageID[i] = '\0';
 			}
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
@@ -1300,7 +1312,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 						fclose(grupos);
 						if (flagExisteGrupo == 1)
-						{							
+						{
 							strncat(header, comandoaux, strlen(comandoaux));
 							flagHeader++;
 						}
@@ -1343,11 +1355,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 							f = fopen("./noticias/n_articulos", "r+");
 							int num_art = 0;
-							if (f == NULL) {
+							if (f == NULL)
+							{
 								printf("Error al abrir el fichero.\n");
 							}
-							fscanf (f, "%d", &num_art);
-							num_art++; 
+							fscanf(f, "%d", &num_art);
+							num_art++;
 							rewind(f);
 							fprintf(f, "%d", num_art);
 							fclose(f);
@@ -1359,11 +1372,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							sprintf(messageID, "Message-ID:<%d@%s>\n", num_art, hostname);
 							strcat(header, messageID);
 
-							/* Fin añadir Message-ID */	
+							/* Fin añadir Message-ID */
 
 							/* Editar numero de articulos en el grupo y escribir */
 
-							/* Fin de editar numero de articulos y escribir.*/				
+							/* Fin de editar numero de articulos y escribir.*/
 							strcpy(buf, "240\r\n");
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
