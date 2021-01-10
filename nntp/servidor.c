@@ -335,14 +335,24 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *grusub1, *grupo1, *subgrupo1;
 	char *sepnoticia, *tema, *numeroId;
 	int fechanoticia, horanoticia;
-	char comandoaux[512];
-	char lineaux[512];
-	char messageID[512];
-	char grupo_aux[512];
+	char comandoaux[TAM_COMANDO];
+	char lineaux[TAM_COMANDO];
+	char messageID[TAM_COMANDO];
+	char grupo_aux[TAM_COMANDO];
 	char num_aux[12];
 	int flagExisteGrupo = 0;
 	int contador = 0;
 	int n;
+	// NEWGROUPS
+	int flagError = 0;
+	char newFecha[10];
+	char newHora[10];
+	char grupoysub[100];
+	char new_n_art[11];
+	char new_n_art2[11];
+	char n_fecha[11];
+	char n_hora[11];
+	char n_desc[100];
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -476,168 +486,135 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 
 		} //######## NEWGROUPS ###########
-		else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
+		else if ((strncmp(comando, "NEWGROUPS", 9) == 0) || (strncmp(comando, "newgroups", 9) == 0))
 		{
+			memset(grupoysub, '\0', sizeof(grupoysub));
+			memset(n_desc, '\0', sizeof(n_desc));
+			memset(new_n_art, '\0', sizeof(new_n_art));
+			memset(new_n_art2, '\0', sizeof(new_n_art2));
+			memset(n_fecha, '\0', sizeof(n_fecha));
+			memset(n_hora, '\0', sizeof(n_hora));
+			memset(comandoaux, '\0', sizeof(comandoaux));
 
-			recv(s, comando, TAM_COMANDO, 0);
+			flagError = 0;
 			time(&timevar);
 			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), comando);
 			//fprintf(stdout, "Servidor recibe: %s\n", comando);
+			int longitudComando = strlen(comando);
+			comando[longitudComando - 1] = '\0';
+			comando[longitudComando - 2] = '\0';
+			comando[longitudComando] = '\0';
 
 			token = strtok(comando, " ");
-			if (token != NULL) //no hace falta comprobar el contenido porque si has entrado aqui
-							   //ya sabes que es porque has introducido "newgroups"
+			if (token != NULL) //no hace falta comprobar el contenido porque si has entrado aqui ya sabes que es porque has introducido "newgroups"
 			{
-				//"newgroups"
-				token2 = token;
-				//printf("\n%s\n", token2);
+				token = strtok(NULL, " ");
+				if ((strlen(token) == 6) && token != NULL)
+				{
+					//fecha
+					strcpy(newFecha, token);
+					token = strtok(NULL, " ");
+					if ((strlen(token) == 6) && token != NULL) //ya que ahora lleva hora\n
+					{
+						//hora
+						strcpy(newHora, token);
+					}
+					else
+					{
+						flagError = 1;
+						time(&timevar);
+						fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+					}
+				}
+				else
+				{
+					flagError = 1;
+					time(&timevar);
+					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+				}
 			}
 			else
 			{
-				strcpy(buf, "501\r\n");
+				flagError = 1;
 				time(&timevar);
-				fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
-				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-					errout(hostname);
+				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+			}
 
-				
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			token = strtok(NULL, " ");
-			if ((strlen(token) == 6))
-			{
-				//fecha
-				token3 = atoi(token);
-				//printf("%d\n", token3);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis en la fecha. ");
-				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			token = strtok(NULL, " ");
-			if ((strlen(token) > 6) && (strlen(token) < 9)) //ya que ahora lleva hora\n
-			{
-				//hora
-				token4 = atoi(token);
-				//printf("%d\n", token4);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis en la hora. ");
-				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
 
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
-				printf("No se ha podido leer el fichero grupos");
+				strcpy(buf, "100\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				//printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
 				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
 			}
 
 			// Quiere decir que esta todo correcto .
-
-			strcpy(buf, "231\r\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			printf("\n231 Nuevos grupos desde %.6d %.6d\n", token3, token4);
-			time(&timevar);
-			fprintf(fLog, "S: %s --> 231 Nuevos grupos desde %.6d %.6d\n", (char *)ctime(&timevar), token3, token4);
-
-			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+			if (flagError == 1) // Asi envia 1 sola vez el codigo de error.
 			{
-				separator = strtok(linea, " ");
-				separator2 = separator;
-				if (separator2 != NULL)
-				{
-					//nombre
-					//printf("\n%s\n", separator2);
-				}
-				else
-				{
-					printf("El nombre del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//ultimo
-					//printf("%s\n", separator);
-				}
-				else
-				{
-					printf("El numero del ultimo articulo del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El numero del ultimo articulo del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//primero
-					//printf("%s\n", separator);
-				}
-				else
-				{
-					printf("El numero del primer articulo del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El numero del primer articulo del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//dia
-					separator3 = atoi(separator);
-					//printf("%d\n", separator3);
-				}
-				else
-				{
-					printf("El dia del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El dia del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//hora
-					separator4 = atoi(separator);
-					//printf("%d\n", separator4);
-				}
-				else
-				{
-					printf("La hora del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> La hora del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-
-				//si la fecha es mayor, me da igual la hora
-				if (separator3 > token3)
-				{
-					printf("%s\n", separator2);
-					time(&timevar);
-					fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), separator2);
-				}
-				//si la fecha es la misma, compruebo la hora
-				if (separator3 == token3 && separator4 >= token4)
-				{
-					printf("%s\n", separator2);
-					time(&timevar);
-					fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), separator2);
-				}
+				strcpy(buf, "501\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
 			}
-			printf(".\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
-			fclose(grupos);
+			else
+			{
+				strcpy(buf, "231\r\n");
+				time(&timevar);
+				fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+
+				//printf("\n231 Nuevos grupos desde %.6d %.6d\n", token3, token4);
+				time(&timevar);
+
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+				{
+					memset(lineaux, '\0', sizeof(lineaux));
+					strcpy(lineaux, linea);
+
+					separator = strtok(linea, " ");
+					strcpy(grupoysub, separator); // Grupo y subgrupo
+
+					separator = strtok(NULL, " ");
+					strcpy(new_n_art, separator); // Ultimo
+
+					separator = strtok(NULL, " ");
+					strcpy(new_n_art2, separator); // primero
+
+					separator = strtok(NULL, " ");
+					strcpy(n_fecha, separator); // dia
+
+					separator = strtok(NULL, " ");
+					strcpy(n_hora, separator); // hora
+
+					//si la fecha es mayor, me da igual la hora
+					if (atoi(n_fecha) > atoi(newFecha))
+					{
+						if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
+							errout(hostname);
+						time(&timevar);
+						fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineaux);
+					}
+					//si la fecha es la misma, compruebo la hora
+					if (n_fecha == newFecha && n_hora >= newHora)
+					{
+						if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
+							errout(hostname);
+						time(&timevar);
+						fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineaux);
+					}
+				}
+				//printf(".\n");
+				if (send(s, ".\r\n", TAM_COMANDO, 0) != TAM_COMANDO)
+					errout(hostname);
+
+				time(&timevar);
+				fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
+				fclose(grupos);
+			}
 		}
 		//######## NEWNEWS ###########
 		else if ((strncmp(comando, "NEWNEWS\r\n", 7) == 0) || (strncmp(comando, "newnews\r\n", 7) == 0))
@@ -1460,34 +1437,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
-			for (int i = 0; i < strlen(header); i++)
-			{
-				header[i] = '\0';
-			}
-			for (int i = 0; i < strlen(body); i++)
-			{
-				body[i] = '\0';
-			}
-			for (int i = 0; i < strlen(messageID); i++)
-			{
-				messageID[i] = '\0';
-			}
-			for (int i = 0; i < strlen(grupo_aux); i++)
-			{
-				grupo_aux[i] = '\0';
-			}
-			for (int i = 0; i < strlen(num_aux); i++)
-			{
-				num_aux[i] = '\0';
-			}
-			for (int i = 0; i < strlen(lineaux); i++)
-			{
-				lineaux[i] = '\0';
-			}
-			for (int i = 0; i < strlen(ruta); i++)
-			{
-				ruta[i] = '\0';
-			}
+			memset(header, '\0', sizeof(header));
+			memset(body, '\0', sizeof(body));
+			memset(messageID, '\0', sizeof(messageID));
+			memset(grupo_aux, '\0', sizeof(grupo_aux));
+			memset(header, '\0', sizeof(header));
+			memset(num_aux, '\0', sizeof(num_aux));
+			memset(lineaux, '\0', sizeof(lineaux));
+			memset(ruta, '\0', sizeof(ruta));
+			
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
 
 			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */

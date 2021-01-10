@@ -490,7 +490,7 @@ void clienteTCP(char *cliente, char *servidor)
 
     while (1)
     {
-
+        memset(comando, '\0', sizeof(comando));
         printf("Escribe el comando que deseas enviar al servidor: \n");
         fgets(comando, TAM_COMANDO, stdin);
 
@@ -572,24 +572,31 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## NEWGROUPS ###########
-        else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
+        else if ((strncmp(comando, "NEWGROUPS", 9) == 0) || (strncmp(comando, "newgroups", 9) == 0))
         {
             if (strcmp(buf, "231\r\n") == 0)
             {
-                printf("Recibiendo correctamente 231\n");
-            } else 
+                printf("231 list of new newsgroups follows\n");
+                fprintf(ficheroLog, "S: 231 list of new newsgroups follows");
 
-            //fflush(stdin);
-            //fgets(newgroups, TAM_NG, stdin);
-            //printf("\nEnvío desde cliente:%s\n", newgroups);
+                while (1) {
+                    recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
+                    fprintf(stdout,"%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
 
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
-            {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0) {
+                        break;
+                    }
+                }
+            } else if (strcmp(buf, "501\r\n") == 0) {
+
+                printf("\n501 Error de sintaxis. ");
+				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+            } else {
+                fprintf(stdout, "%s\n", buf);
+                printf("Error al abrir el fichero de grupos.\n");
+                fprintf(ficheroLog, "S: Error al abrir el fichero de grupos.\n");
             }
         }
         //######## NEWNEWS ###########
