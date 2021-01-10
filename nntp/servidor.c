@@ -349,7 +349,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	 * was returned by the accept call, in the main
 	 * daemon loop above.
 	 */
-	
+
 	status = getnameinfo((struct sockaddr *)&clientaddr_in, sizeof(clientaddr_in),
 						 hostname, MAXHOST, NULL, 0, 0);
 	if (status)
@@ -371,9 +371,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * that this program could easily be ported to a host
 		 * that does require it.
 		 */
-		
+
 	fLog = fopen("nntpd.log", "w");
-	if (fLog == NULL ) {
+	if (fLog == NULL)
+	{
 		fprintf(stdout, "Error al abrir el fichero nntpd.log\n");
 		exit(1);
 	}
@@ -440,39 +441,43 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		//######## LIST ###########
 		if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
 		{
-			printf("\n215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n\n");
-			strcpy(buf, "215");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n", (char *)ctime(&timevar), buf);
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
 
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
 				printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
-			fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				strcpy(buf, "100\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
+			else
+			{
+				strcpy(buf, "215\r\n");
+				time(&timevar);
+				fprintf(fLog, "S: %s --> %s listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n", (char *)ctime(&timevar), buf);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+				{
+					if (send(s, linea, TAM_COMANDO, 0) != TAM_COMANDO)
+						errout(hostname);
+
+					time(&timevar);
+					fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), linea);
+				}
+				if (send(s, ".\r\n", TAM_COMANDO, 0) != TAM_COMANDO) // Enviamos el . para indicar el fin de grupos.
+					errout(hostname);
+				time(&timevar);
+				fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
+				fclose(grupos);
 			}
 
-			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
-			{
-				printf("%s", linea);
-				time(&timevar);
-				fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), linea);
-			}
-			printf(".\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
-			fclose(grupos);
 		} //######## NEWGROUPS ###########
 		else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
 		{
-			strcpy(buf, "231\r\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
 
 			recv(s, comando, TAM_COMANDO, 0);
 			time(&timevar);
@@ -489,8 +494,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 			else
 			{
-				printf("\n501 Error de sintaxis. ");
-				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+				strcpy(buf, "501\r\n");
+				time(&timevar);
+				fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+
+				
 				time(&timevar);
 				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
 			}
@@ -530,6 +540,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				time(&timevar);
 				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
 			}
+
+			// Quiere decir que esta todo correcto .
+
+			strcpy(buf, "231\r\n");
+			time(&timevar);
+			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+				errout(hostname);
 
 			printf("\n231 Nuevos grupos desde %.6d %.6d\n", token3, token4);
 			time(&timevar);

@@ -376,6 +376,7 @@ void clienteTCP(char *cliente, char *servidor)
     char buf[TAM_BUFFER];
     //char newgroups[TAM_NG];
     FILE *ficheroLog;
+    char lineaInfo[TAM_COMANDO];
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -515,15 +516,6 @@ void clienteTCP(char *cliente, char *servidor)
             fprintf(stderr, "on send number %d\n", i);
             exit(1);
         }
-
-        //terminacion de la fase de envío de datos
-        /*if (shutdown(s, 1) == -1)
-        {
-            perror(cliente);
-            fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
-            exit(1);
-        }*/
-
         /* Con este codigo de aqui se recibe la respuesta al comando */
         i = recv(s, buf, TAM_BUFFER, 0);
 
@@ -556,18 +548,36 @@ void clienteTCP(char *cliente, char *servidor)
         //######## LIST ###########
         if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
         { //TODO: este if se puede eliminar entero
-            /*if (strcmp(buf, "215\r\n") == 0)
+            if (strcmp(buf, "215\r\n") == 0)
             {
-                printf("Recibiendo correctamente 215\n");
-            }*/
+                printf("215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
+                fprintf(ficheroLog, "S: 215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
+
+                while (1) {
+                    recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
+                    fprintf(stdout,"%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
+
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0) {
+                        break;
+                    }
+                }
+                
+
+            } else {
+                // Errores al abrir el archivo.
+                fprintf(stdout, "Error al abrir el archivo de grupos\n");
+                fprintf(ficheroLog, "S: Error al abrir el archivo grupos.\n");
+
+            }
         }
         //######## NEWGROUPS ###########
         else if ((strncmp(comando, "NEWGROUPS\r\n", 9) == 0) || (strncmp(comando, "newgroups\r\n", 9) == 0))
         {
-            /*if (strcmp(buf, "231\r\n") == 0)
+            if (strcmp(buf, "231\r\n") == 0)
             {
                 printf("Recibiendo correctamente 231\n");
-            }*/
+            } else 
 
             //fflush(stdin);
             //fgets(newgroups, TAM_NG, stdin);
