@@ -743,25 +743,19 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								//subject
 								if ((strcmp(sepnoticia, "Subject:") == 0))
 								{
-									/*sepnoticia = strtok(NULL, "\n");
+									sepnoticia = strtok(NULL, "\n");
 									if (sepnoticia != NULL)
 									{
 										//tema
 										tema = sepnoticia;
-										//printf("\nTema del articulo:%s\n", tema);
+										printf("\nTema del articulo: %s\n", tema);
 									}
 									else
 									{
-										printf("Fecha del articulo vacia\n");
-									}*/
-									while (sepnoticia != NULL)
-									{
-										printf(" %s\n", sepnoticia);
-
-										sepnoticia = strtok(NULL, " ");
-									}
+										printf("Tema del articulo vacio\n");
+									}									
 								}
-								//nombre
+								//fecha
 								if ((strcmp(sepnoticia, "Date:") == 0))
 								{
 									sepnoticia = strtok(NULL, " ");
@@ -769,7 +763,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 									{
 										//fecha noticia
 										fechanoticia = atoi(sepnoticia);
-										//printf("\nFecha del articulo:%d\n", fechanoticia);
+										printf("\nFecha del articulo:%d\n", fechanoticia);
 									}
 									else
 									{
@@ -780,7 +774,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 									{
 										//hora noticia
 										horanoticia = atoi(sepnoticia);
-										//printf("\nHora del articulo:%d\n", horanoticia);
+										printf("\nHora del articulo:%d\n", horanoticia);
 									}
 									else
 									{
@@ -790,12 +784,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								//id
 								if ((strcmp(sepnoticia, "Message-ID:") == 0))
 								{
-									sepnoticia = strtok(NULL, " ");
+									sepnoticia = strtok(NULL, "\n");
 									if (sepnoticia != NULL)
 									{
 										//id noticia
 										numeroId = sepnoticia;
 										printf("\nID del articulo:%s\n", numeroId);
+
+
 									}
 									else
 									{
@@ -811,13 +807,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						//si la fecha es mayor, me da igual la hora
 						if (fechanoticia > token3)
 						{
-							printf("\nArticulo numero: %d, ID: %s", i, numeroId);
-							//printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
+							printf("\nArticulo numero: %d, tema: %s, ID: %s", i, tema, numeroId);
 						}
 						//si la fecha es la misma, compruebo la hora
 						if (fechanoticia == token3 && horanoticia >= token4)
 						{
-							printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
+							printf("\nArticulo numero: %d, tema: %s, ID: %s", i, tema, numeroId);
 						}
 					}
 				}
