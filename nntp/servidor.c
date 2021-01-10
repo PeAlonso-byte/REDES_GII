@@ -307,6 +307,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int flagHeader = 0; // Tiene que valer 2 para que el header este completo.
 	int flag = 0;		// 0 = HEADER; 1 = BODY
 	int flagGrupo = 0;
+	int flagN = 1;
+	int flagB = 0;
 	int reqcnt = 0;					/* keeps count of number of requests */
 	char buf[TAM_BUFFER];			/* This example uses TAM_BUFFER byte messages. */
 	char hostname[MAXHOST];			/* remote host's name string */
@@ -330,7 +332,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	char *grusub, *grupo, *subgrupo;
 	char ruta[100];
 	char *grusub1, *grupo1, *subgrupo1;
-	char *sepnoticia, *sepnoticia2, *numeroId;
+	char *sepnoticia, *tema, *numeroId;
 	int fechanoticia, horanoticia;
 	char comandoaux[512];
 	char lineaux[512];
@@ -648,7 +650,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				//grupo
 				grupo1 = grusub1;
-				printf("\nNombre grupo introducido:%s\n", grupo1);
+				//printf("\nNombre grupo introducido:%s\n", grupo1);
 			}
 			else
 			{
@@ -659,12 +661,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				//subgrupo
 				subgrupo1 = grusub1;
-				printf("\nNombre subgrupo introducido:%s\n", subgrupo1);
+				//printf("\nNombre subgrupo introducido:%s\n", subgrupo1);
 			}
 			else
 			{
 				printf("El nombre del subgrupo esta vacio\n");
 			}
+
+			printf("\n230 Nuevos articulos desde %.6d %.6d\n", token3, token4);
 
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
@@ -691,7 +695,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					//ultimo
 					separator3 = atoi(separator);
-					printf("\nNumero de articulos:%d\n", separator3);
+					//printf("\nNumero de articulos:%d\n", separator3);
 				}
 				else
 				{
@@ -702,7 +706,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					//grupo
 					grupo = grusub;
-					printf("\nNombre grupo fichero:%s\n", grupo);
+					//printf("\nNombre grupo fichero:%s\n", grupo);
 				}
 				else
 				{
@@ -713,21 +717,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				{
 					//subgrupo
 					subgrupo = grusub;
-					printf("\nNombre subgrupo fichero:%s\n", subgrupo);
+					//printf("\nNombre subgrupo fichero:%s\n", subgrupo);
 				}
 				else
 				{
 					printf("El nombre del subgrupo esta vacio\n");
 				}
-				//A partir de aqui se queda bloqueado
-				printf("\n%s%s%s%s", grupo, grupo1, subgrupo, subgrupo1); //no llega ni a imprimir esta linea
-				//if ((strcmp(grupo, grupo1 == 0) && (strcmp(subgrupo, subgrupo1)) == 0))
-				if ((strncmp(grupo, grupo1, strlen(grupo1)) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo1)) == 0))
+				if ((strcmp(grupo, grupo1) == 0) && (strcmp(subgrupo, subgrupo1) == 0))
+				//if ((strncmp(grupo, grupo1, strlen(grupo1)) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo1)) == 0))
 				{
-					for (int i = 1; i < separator3; i++)
+					for (int i = 1; i <= separator3; i++)
 					{
 						sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, i);
-						//printf("\n\nhola %s\n", ruta);
 						noticia = fopen(ruta, "rt");
 						if (noticia == NULL)
 						{
@@ -739,17 +740,36 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							sepnoticia = strtok(lineanoticia, " ");
 							if (sepnoticia != NULL)
 							{
+								//subject
+								if ((strcmp(sepnoticia, "Subject:") == 0))
+								{
+									/*sepnoticia = strtok(NULL, "\n");
+									if (sepnoticia != NULL)
+									{
+										//tema
+										tema = sepnoticia;
+										//printf("\nTema del articulo:%s\n", tema);
+									}
+									else
+									{
+										printf("Fecha del articulo vacia\n");
+									}*/
+									while (sepnoticia != NULL)
+									{
+										printf(" %s\n", sepnoticia);
+
+										sepnoticia = strtok(NULL, " ");
+									}
+								}
 								//nombre
-								sepnoticia2 = sepnoticia;
-								//printf("\n%s\n", sepnoticia2);
-								if ((strcmp(sepnoticia2, "Date:") == 0))
+								if ((strcmp(sepnoticia, "Date:") == 0))
 								{
 									sepnoticia = strtok(NULL, " ");
 									if (sepnoticia != NULL)
 									{
 										//fecha noticia
 										fechanoticia = atoi(sepnoticia);
-										printf("\nFecha del articulo:%d\n", fechanoticia);
+										//printf("\nFecha del articulo:%d\n", fechanoticia);
 									}
 									else
 									{
@@ -760,11 +780,26 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 									{
 										//hora noticia
 										horanoticia = atoi(sepnoticia);
-										printf("\nHora del articulo:%d\n", horanoticia);
+										//printf("\nHora del articulo:%d\n", horanoticia);
 									}
 									else
 									{
 										printf("Hora del articulo vacia\n");
+									}
+								}
+								//id
+								if ((strcmp(sepnoticia, "Message-ID:") == 0))
+								{
+									sepnoticia = strtok(NULL, " ");
+									if (sepnoticia != NULL)
+									{
+										//id noticia
+										numeroId = sepnoticia;
+										printf("\nID del articulo:%s\n", numeroId);
+									}
+									else
+									{
+										printf("Fecha del articulo vacia\n");
 									}
 								}
 							}
@@ -772,17 +807,17 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							{
 								printf("El fichero noticia esta vacio\n");
 							}
-
-							//si la fecha es mayor, me da igual la hora
-							if (fechanoticia > token3)
-							{
-								printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
-							}
-							//si la fecha es la misma, compruebo la hora
-							if (fechanoticia == token3 && horanoticia >= token4)
-							{
-								printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
-							}
+						}
+						//si la fecha es mayor, me da igual la hora
+						if (fechanoticia > token3)
+						{
+							printf("\nArticulo numero: %d, ID: %s", i, numeroId);
+							//printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
+						}
+						//si la fecha es la misma, compruebo la hora
+						if (fechanoticia == token3 && horanoticia >= token4)
+						{
+							printf("\nArticulo perteneciente a: %s.%s numero: %d", grupo, subgrupo, i);
 						}
 					}
 				}
@@ -1109,12 +1144,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 					}
 					rewind(noticia);
-					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia) && flagN)
 					{
-						//while (lineanoticia != "\n\n")
-						while ((strcmp(lineanoticia, "\n\n") != 0))
+						if (!strcmp(lineanoticia, "\r\n") || !strcmp(lineanoticia, "\n"))
 						{
-							printf("%s", lineanoticia); //AQUI
+							flagN = 0;
+						}
+						else
+						{
+							printf("%s", lineanoticia);
 						}
 					}
 					fclose(noticia);
@@ -1207,10 +1245,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					rewind(noticia);
 					while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 					{
-						//while (lineanoticia != "\n\n")
-						while ((strcmp(lineanoticia, "\n\n") != 0))
+						if (!strcmp(lineanoticia, "\r\n") || !strcmp(lineanoticia, "\n"))
 						{
-							printf("%s", lineanoticia); //AQUI
+							flagB = 1;
+						}
+						else if (flagB)
+						{
+							printf("%s", lineanoticia);
 						}
 					}
 					fclose(noticia);
