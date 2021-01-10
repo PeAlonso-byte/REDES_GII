@@ -83,6 +83,7 @@ void clienteUDP(char *cliente, char *servidor)
     struct sigaction vec;
     char hostname[MAXHOST];
     struct addrinfo hints, *res;
+    FILE f;
 
     // Cachito de Juanan
 
@@ -374,7 +375,7 @@ void clienteTCP(char *cliente, char *servidor)
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
     //char newgroups[TAM_NG];
-
+    FILE *ficheroLog;
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -473,30 +474,26 @@ void clienteTCP(char *cliente, char *servidor)
 	 * that this program could easily be ported to a host
 	 * that does require it.
 	 */
-    fprintf(stdout, "Connected to %s on port %u at %s",
-            servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
+    char nombrePuerto[50];
+    sprintf(nombrePuerto, "%u.txt", ntohs(myaddr_in.sin_port));
+    ficheroLog = fopen(nombrePuerto, "w");
+
+    if (ficheroLog == NULL) {
+        fprintf(stdout, "Error al crear el fichero log\n");
+        return;
+    }
+    fprintf(ficheroLog, "Connected to %s on port %u at %s\n", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
     /* PRUEBA COMANDO POST */
     char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
+
     while (1)
     {
 
         printf("Escribe el comando que deseas enviar al servidor: \n");
         fgets(comando, TAM_COMANDO, stdin);
-        if ((strcmp(comando, "QUIT\r\n") == 0 || strcmp(comando, "quit\r\n") == 0)) {
-            
-            printf("Saliendo del servidor...\n");
-            break;
-        }
-        // CODIGO PARA AÑADIR EL \R\N A LOS COMANDOS
 
-        //int tmp = 0;
-        /*
-    while (comando[tmp] != '\n' && comando[tmp] != '\0')
-        tmp++;
-    if (comando[tmp] != '\0')
-        comando[tmp] = '\0';
-    */
+        // CODIGO PARA AÑADIR EL \R\N A LOS COMANDOS
 
         i = 0;
         while ('\n' != comando[i] && '\r' != comando[i] && '\0' != comando[i])
@@ -510,7 +507,7 @@ void clienteTCP(char *cliente, char *servidor)
         }
 
         // FIN DE FORMATEO DE COMANDOS.
-
+        fprintf(ficheroLog, "C: %s\n", comando);
         //envio de datos
         if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
         {
@@ -535,6 +532,23 @@ void clienteTCP(char *cliente, char *servidor)
             perror(cliente);
             fprintf(stderr, "%s: error reading result\n", cliente);
             exit(1);
+        }
+
+        if ((strcmp(comando, "QUIT\r\n") == 0 || strcmp(comando, "quit\r\n") == 0))
+        {
+
+            if (strcmp(buf, "205\r\n") == 0)
+            {
+                if (shutdown(s, 1) == -1)
+                {
+                    perror(cliente);
+                    fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
+                    exit(1);
+                }
+                printf("205 closing connection\n");
+                fprintf(ficheroLog, "S: 205 closing connection\n");
+            }
+            break;
         }
 
         /* FIN RESPUESTA COMANDO POST */
@@ -563,6 +577,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -580,6 +596,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -597,6 +615,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -614,6 +634,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -631,6 +653,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -648,6 +672,8 @@ void clienteTCP(char *cliente, char *servidor)
             {
                 fprintf(stderr, "%s: Connection aborted on error ", cliente);
                 fprintf(stderr, "on send number %d\n", i);
+                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                fprintf(ficheroLog, "on send number %d\n", i);
                 exit(1);
             }
         }
@@ -657,6 +683,7 @@ void clienteTCP(char *cliente, char *servidor)
             if (strcmp(buf, "340\r\n") == 0)
             { // Se puede realizar el post.
                 printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
+                fprintf(ficheroLog, "S: 340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
                 // Vamos a enviar bloques de 510 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
                 while (strcmp(comando, ".\r\n") != 0)
@@ -681,103 +708,50 @@ void clienteTCP(char *cliente, char *servidor)
                     }
 
                     // Fin de formateo.
-
+                    fprintf(ficheroLog, "C: %s", comando);
                     if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO) // Este send da el error que aparece en la esquina derecha de la pantalla
                     {
                         fprintf(stderr, "%s: Connection aborted on error ", cliente);
                         fprintf(stderr, "on send number %d\n", i);
+                        fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
+                        fprintf(ficheroLog, "on send number %d\n", i);
                         exit(1);
                     }
                 }
+
+                //f = fopen
+
                 // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
                 i = recv(s, buf, TAM_BUFFER, 0);
                 if (strcmp(buf, "240\r\n") == 0)
                 {
                     printf("240 Article received OK\n");
+                    fprintf(ficheroLog, "S: 240 Article received OK\n");
                 }
                 else
                 {
                     printf("441 Posting failed\n");
+                    fprintf(ficheroLog, "S: 441 Posting failed\n");
                 }
             }
             else
             { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
-                fprintf(stdout, "Received result number %s\n", buf);
+                fprintf(ficheroLog, "Received result number %s\n", buf);
                 //printf("440 Posting no permitido\n");
             }
         }
         else
         { // Aqui irian los distintos comandos
-            printf("No se ha recibido ningun comando conocido\n");
+            if (strcmp(buf, "500\r\n") == 0)
+            {
+                printf("500 Comando no reconocido\n");
+                fprintf(ficheroLog, "S: 500 Comando no reconocido\n");
+            }
         }
     }
-    /* FIN PRUEBA COMANDO POST */
-
-    /* 
-    for (i=1; i<=5; i++) {
-		*buf = i;
-		if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER) {
-			fprintf(stderr, "%s: Connection aborted on error ",	cliente);
-			fprintf(stderr, "on send number %d\n", i);
-			exit(1);
-		}
-	}
-
-		/* Now, shutdown the connection for further sends.
-		 * This will cause the server to receive an end-of-file
-		 * condition after it has received all the requests that
-		 * have just been sent, indicating that we will not be
-		 * sending any further requests.
-		 */
-    /*
-    if (shutdown(s, 1) == -1) {
-		perror(cliente);
-		fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
-		exit(1);
-	}
-
-		/* Now, start receiving all of the replys from the server.
-		 * This loop will terminate when the recv returns zero,
-		 * which is an end-of-file condition.  This will happen
-		 * after the server has sent all of its replies, and closed
-		 * its end of the connection.
-		 */
-    /*
-    while (i = recv(s, buf, TAM_BUFFER, 0)) {
-		if (i == -1) {
-            perror(cliente);
-			fprintf(stderr, "%s: error reading result\n", cliente);
-			exit(1);
-		}
-			/* The reason this while loop exists is that there
-			 * is a remote possibility of the above recv returning
-			 * less than TAM_BUFFER bytes.  This is because a recv returns
-			 * as soon as there is some data, and will not wait for
-			 * all of the requested data to arrive.  Since TAM_BUFFER bytes
-			 * is relatively small compared to the allowed TCP
-			 * packet sizes, a partial receive is unlikely.  If
-			 * this example had used 2048 bytes requests instead,
-			 * a partial receive would be far more likely.
-			 * This loop will keep receiving until all TAM_BUFFER bytes
-			 * have been received, thus guaranteeing that the
-			 * next recv at the top of the loop will start at
-			 * the begining of the next reply.
-			 */
-    /*
-		while (i < TAM_BUFFER) {
-			j = recv(s, &buf[i], TAM_BUFFER-i, 0);
-			if (j == -1) {
-                     perror(cliente);
-			         fprintf(stderr, "%s: error reading result\n", cliente);
-			         exit(1);
-               }
-			i += j;
-		}
-			/* Print out message indicating the identity of this reply. */
-    /*fprintf(stdout, "Received result number %d\n", *buf);
-	}
-
     /* Print message indicating completion of task. */
     time(&timevar);
     fprintf(stdout, "\n\nAll done at %s", (char *)ctime(&timevar));
+    fprintf(ficheroLog, "\n\nAll done at %s", (char *)ctime(&timevar));
+    //fclose(ficheroLog);
 } // Fin TCP
