@@ -540,7 +540,6 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
 			}
 
-
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
@@ -553,7 +552,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 
 			// Quiere decir que esta todo correcto .
-			if (flagError == 1) // Asi envia 1 sola vez el codigo de error.
+			else if (flagError == 1) // Asi envia 1 sola vez el codigo de error.
 			{
 				strcpy(buf, "501\r\n");
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
@@ -617,7 +616,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 		}
 		//######## NEWNEWS ###########
-		else if ((strncmp(comando, "NEWNEWS\r\n", 7) == 0) || (strncmp(comando, "newnews\r\n", 7) == 0))
+		else if ((strncmp(comando, "NEWNEWS", 7) == 0) || (strncmp(comando, "newnews", 7) == 0))
 		{
 			strcpy(buf, "230\r\n");
 			time(&timevar);
@@ -910,174 +909,110 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			fclose(grupos);
 		}
 		//######## GROUP ###########
-		else if ((strncmp(comando, "GROUP\r\n", 5) == 0) || (strncmp(comando, "group\r\n", 5) == 0))
+		else if ((strncmp(comando, "GROUP", 5) == 0) || (strncmp(comando, "group", 5) == 0))
 		{
-			strcpy(buf, "211\r\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			recv(s, comando, TAM_COMANDO, 0);
-			//fprintf(stdout, "Servidor recibe: %s\n", comando);
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), comando);
-
+			memset(comandoaux, '\0', sizeof(comandoaux));
+			flagError = 0;
+			int longitudComando = strlen(comando);
+			comando[longitudComando - 1] = '\0';
+			comando[longitudComando - 2] = '\0';
+			comando[longitudComando] = '\0';
 			token = strtok(comando, " ");
 			if (token != NULL)
 			{
 				//"group"
 				token2 = token;
 				//printf("\n%s\n", token2);
+
+				token = strtok(NULL, " ");
+				if (token != NULL)
+				{
+					grupo = token; // En grupo tengo grupo.subgrupo que recibe del cliente.
+				}
+				else
+				{
+					flagError = 1;
+					//printf("\n501 Error de sintaxis. ");
+					//printf("Uso: Uso: <group> <grupo_noticias>\n");
+					time(&timevar);
+					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
+				}
 			}
 			else
 			{
-				printf("\n501 Error de sintaxis. ");
-				printf("Uso: <group> <grupo_noticias>\n");
+				flagError = 1;
+				//printf("\n501 Error de sintaxis. ");
+				//printf("Uso: <group> <grupo_noticias>\n");
 				time(&timevar);
 				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
 			}
-			token = strtok(NULL, " ");
-			if (token != NULL)
-			{
-				//grupo.subgrupo de noticias
-				token5 = token;
-				token6 = token;
-				//printf("%s\n", token5);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis. ");
-				printf("Uso: Uso: <group> <grupo_noticias>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
-			}
-			grusub1 = strtok(token6, ".");
-			if (grusub1 != NULL)
-			{
-				//grupo
-				grupo1 = grusub1;
-				//printf("\nNombre grupo introducido:%s\n", grupo1);
-			}
-			else
-			{
-				printf("El nombre del grupo esta vacio\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-			}
-			grusub1 = strtok(NULL, ".");
-			if (grusub1 != NULL)
-			{
-				//subgrupo
-				subgrupo1 = grusub1;
-				//printf("\nNombre subgrupo introducido:%s\n", subgrupo1);
-			}
-			else
-			{
-				printf("El nombre del subgrupo esta vacio\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> El nombre del subgrupo esta vacio\n", (char *)ctime(&timevar));
-			}
+
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
-				printf("No se ha podido leer el fichero grupos");
+				strcpy(buf, "100\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				//printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
 				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
 			}
-
-			flagGrupo = 0;
-
-			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+			else if (flagError == 1)
 			{
-				separator = strtok(linea, " ");
-				if (separator != NULL)
-				{
-					//nombre
-					separator2 = separator;
-					separator5 = separator;
-					//printf("\nNOMBRE GRUSUB:%s\n", separator2);
-				}
-				else
-				{
-					printf("El nombre del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//ultimo
-					separator3 = atoi(separator);
-					//printf("\nUltimo articulo:%d\n", separator3);
-				}
-				else
-				{
-					printf("El numero del ultimo articulo del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El numero del ultimo articulo del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//primero
-					separator4 = atoi(separator);
-					//printf("\nPrimer articulo:%d\n", separator4);
-				}
-				else
-				{
-					printf("El numero del primer articulo del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El numero del primer articulo del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				grusub = strtok(separator5, ".");
-				if (grusub != NULL)
-				{
-					//grupo
-					grupo = grusub;
-					//printf("\nNombre grupo fichero:%s\n", grupo);
-				}
-				else
-				{
-					printf("El nombre del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				grusub = strtok(NULL, ".");
-				if (grusub != NULL)
-				{
-					//subgrupo
-					subgrupo = grusub;
-					//printf("\nNombre subgrupo fichero:%s\n", subgrupo);
-				}
-				else
-				{
-					printf("El nombre del subgrupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del subgrupo esta vacio\n", (char *)ctime(&timevar));
-				}
-
-				if ((strcmp(grupo, grupo1) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo)) == 0))
-				{
-					printf("211 %d %d %d %s.%s", separator3, separator3, separator4, grupo, subgrupo);
-					time(&timevar);
-					fprintf(fLog, "S: %s --> 211 %d %d %d %s.%s\n", (char *)ctime(&timevar), separator3, separator3, separator4, grupo, subgrupo);
-
-					printf("\n\t(hay %d articulos, del %d al %d, en %s.%s)\n", separator3, separator4, separator3, grupo, subgrupo);
-					printf(".\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> \n\t(hay %d articulos, del %d al %d, en %s.%s)\n.\n", (char *)ctime(&timevar), separator3, separator4, separator3, grupo, subgrupo);
-					flagGrupo = 1;
-				}
-				else if ((strcmp(grupo, grupo1) != 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo)) != 0))
-				{
-					printf("\n411 no existe ese grupo de noticias\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> 411 no existe ese grupo de noticias\n", (char *)ctime(&timevar));
-				}
+				strcpy(buf, "501\r\n");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+				time(&timevar);
+				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
 			}
+			else
+			{
+				flagGrupo = 0;
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+				{
+					memset(lineaux, '\0', sizeof(lineaux));
+					strcpy(lineaux, linea);
+					separator = strtok(linea, " ");
+					if (separator != NULL)
+					{
+						//nombre
+						grupo1 = separator;
+					}
+					/*else
+					{
+						printf("El nombre del grupo esta vacio\n");
+						time(&timevar);
+						fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
+					}*/
+					if ((strcmp(grupo, grupo1) == 0))
+					{
+						flagGrupo = 1;
+						break;
+					}
+				}
+				if (flagGrupo == 0)
+				{
+					strcpy(buf, "441\r\n");
+					time(&timevar);
+					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+						errout(hostname);
+					fprintf(fLog, "S: %s --> %s %s is unknown\n", (char *)ctime(&timevar), buf, grupo);
+				}
+				else
+				{
+					strcpy(buf, "211\r\n");
+					time(&timevar);
+					fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+						errout(hostname);
 
-			fclose(grupos);
+					time(&timevar);
+					fprintf(fLog, "S: %s --> 211 %s", (char *)ctime(&timevar), lineaux);
+					if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
+						errout(hostname);
+				}
+				fclose(grupos);
+			}
 		}
 		//######## ARTICLE ###########
 		else if ((strncmp(comando, "ARTICLE\r\n", 7) == 0) || (strncmp(comando, "article\r\n", 7) == 0))
@@ -1445,7 +1380,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			memset(num_aux, '\0', sizeof(num_aux));
 			memset(lineaux, '\0', sizeof(lineaux));
 			memset(ruta, '\0', sizeof(ruta));
-			
+
 			num_lineas = 0; // Para controlar que no podamos recibir mas de 5 lineas de body (Si lo hacemos con memoria dinamica sobra.)
 
 			/* Aqui tenemos que empezar a recibir el POST entero: HEADER Y BODY */

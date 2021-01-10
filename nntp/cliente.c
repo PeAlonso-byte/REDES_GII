@@ -377,6 +377,7 @@ void clienteTCP(char *cliente, char *servidor)
     //char newgroups[TAM_NG];
     FILE *ficheroLog;
     char lineaInfo[TAM_COMANDO];
+    char *divide;
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -479,7 +480,8 @@ void clienteTCP(char *cliente, char *servidor)
     sprintf(nombrePuerto, "%u.txt", ntohs(myaddr_in.sin_port));
     ficheroLog = fopen(nombrePuerto, "w");
 
-    if (ficheroLog == NULL) {
+    if (ficheroLog == NULL)
+    {
         fprintf(stdout, "Error al crear el fichero log\n");
         return;
     }
@@ -491,6 +493,7 @@ void clienteTCP(char *cliente, char *servidor)
     while (1)
     {
         memset(comando, '\0', sizeof(comando));
+        memset(lineaInfo, '\0', sizeof(lineaInfo));
         printf("Escribe el comando que deseas enviar al servidor: \n");
         fgets(comando, TAM_COMANDO, stdin);
 
@@ -553,22 +556,23 @@ void clienteTCP(char *cliente, char *servidor)
                 printf("215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
                 fprintf(ficheroLog, "S: 215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
 
-                while (1) {
+                while (1)
+                {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout,"%s", lineaInfo);
+                    fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
-                    if (strncmp(lineaInfo, ".\r\n", 3) == 0) {
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0)
+                    {
                         break;
                     }
                 }
-                
-
-            } else {
+            }
+            else
+            {
                 // Errores al abrir el archivo.
                 fprintf(stdout, "Error al abrir el archivo de grupos\n");
                 fprintf(ficheroLog, "S: Error al abrir el archivo grupos.\n");
-
             }
         }
         //######## NEWGROUPS ###########
@@ -579,28 +583,34 @@ void clienteTCP(char *cliente, char *servidor)
                 printf("231 list of new newsgroups follows\n");
                 fprintf(ficheroLog, "S: 231 list of new newsgroups follows");
 
-                while (1) {
+                while (1)
+                {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout,"%s", lineaInfo);
+                    fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
-                    if (strncmp(lineaInfo, ".\r\n", 3) == 0) {
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0)
+                    {
                         break;
                     }
                 }
-            } else if (strcmp(buf, "501\r\n") == 0) {
+            }
+            else if (strcmp(buf, "501\r\n") == 0)
+            {
 
                 printf("\n501 Error de sintaxis. ");
-				printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+                printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
-            } else {
+            }
+            else
+            {
                 fprintf(stdout, "%s\n", buf);
                 printf("Error al abrir el fichero de grupos.\n");
                 fprintf(ficheroLog, "S: Error al abrir el fichero de grupos.\n");
             }
         }
         //######## NEWNEWS ###########
-        else if ((strncmp(comando, "NEWNEWS\r\n", 7) == 0) || (strncmp(comando, "newnews\r\n", 7) == 0))
+        else if ((strncmp(comando, "NEWNEWS", 7) == 0) || (strncmp(comando, "newnews", 7) == 0))
         {
             /*if (strcmp(buf, "230\r\n") == 0)
             {
@@ -619,26 +629,42 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## GROUP ###########
-        else if ((strncmp(comando, "GROUP\r\n", 5) == 0) || (strncmp(comando, "group\r\n", 5) == 0))
+        else if ((strncmp(comando, "GROUP", 5) == 0) || (strncmp(comando, "group", 5) == 0))
         {
-            /*if (strcmp(buf, "211\r\n") == 0)
+            if (strcmp(buf, "211\r\n") == 0)
             {
-                printf("Recibiendo correctamente 211\n");
-            }*/
-
-            //printf("\nEnvío desde cliente:%s\n", comando);
-
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos el grupo que nos han mandado
+                fprintf(stdout, "221 %s", lineaInfo);
+                fprintf(ficheroLog, "S: 221 %s", lineaInfo);
+            }
+            else if (strcmp(buf, "441\r\n") == 0)
             {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                int longitudComando = strlen(comando);
+                comando[longitudComando - 1] = '\0';
+                comando[longitudComando - 2] = '\0';
+                comando[longitudComando] = '\0';
+                divide = strtok(comando, " ");
+                divide = strtok(NULL, " ");
+
+                fprintf(ficheroLog, "S: 441 %s is unknown\n", divide);
+                fprintf(stdout, "441 %s is unknown\n", divide);
+            }
+            else if (strcmp(buf, "501\r\n") == 0)
+            {
+
+                printf("501 Error de sintaxis\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n");
+            }
+            else
+            {
+                // Errores al abrir el archivo.
+                fprintf(stdout, "El error es: %s\n", buf);
+                fprintf(stdout, "Error al abrir el archivo de grupos\n");
+                fprintf(ficheroLog, "S: Error al abrir el archivo grupos.\n");
             }
         }
         //######## ARTICLE ###########
-        else if ((strncmp(comando, "ARTICLE\r\n", 7) == 0) || (strncmp(comando, "article\r\n", 7) == 0))
+        else if ((strncmp(comando, "ARTICLE", 7) == 0) || (strncmp(comando, "article", 7) == 0))
         {
             /*if (strcmp(buf, "223\r\n") == 0)
             {
@@ -657,7 +683,7 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## HEAD ###########
-        else if ((strncmp(comando, "HEAD\r\n", 4) == 0) || (strncmp(comando, "head\r\n", 4) == 0))
+        else if ((strncmp(comando, "HEAD", 4) == 0) || (strncmp(comando, "head", 4) == 0))
         {
             /*if (strcmp(buf, "221\r\n") == 0)
             {
@@ -676,7 +702,7 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## BODY ###########
-        else if ((strncmp(comando, "BODY\r\n", 4) == 0) || (strncmp(comando, "body\r\n", 4) == 0))
+        else if ((strncmp(comando, "BODY", 4) == 0) || (strncmp(comando, "body", 4) == 0))
         {
             /*if (strcmp(buf, "222\r\n") == 0)
             {
@@ -695,7 +721,7 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## POST ###########
-        else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
+        else if ((strcmp(comando, "POST") == 0) || (strcmp(comando, "post") == 0))
         {
             if (strcmp(buf, "340\r\n") == 0)
             { // Se puede realizar el post.
