@@ -1,6 +1,6 @@
 /*
 ** Fichero: cliente.c
-** Autores
+** Autores:
 ** Pedro Luis Alonso Díez (72190545P)
 ** Esther Andrés Fraile (70918564L)
 */
@@ -27,15 +27,14 @@ extern int errno;
 #define MAXHOST 512
 #define TAM_BUFFER 10
 #define TAM_COMANDO 510
-//#define TAM_NG 25
 
 void handler()
 {
-    printf("Alarma recibida \n");
+    //printf("Alarma recibida \n");
 }
 
 void clienteTCP(char *, char *, char *);
-void clienteUDP(char *, char *);
+void clienteUDP(char *, char *, char *);
 
 int main(int argc, char *argv[])
 {
@@ -47,7 +46,7 @@ int main(int argc, char *argv[])
     */
     if (argc != 4)
     {
-        fprintf(stderr, "Uso: %s <nombre_IP_servidor> <protocolo> <fichero> \n", argv[0]);
+        //fprintf(stderr, "Uso: %s <nombre_IP_servidor> <protocolo> <fichero> \n", argv[0]);
         exit(1);
     }
     else
@@ -59,19 +58,18 @@ int main(int argc, char *argv[])
         }
         else if (0 == strncmp(argv[2], "UDP", 3))
         {
-            clienteUDP(argv[0], argv[1]);
+            clienteUDP(argv[0], argv[1], argv[3]);
         }
         else
         {
-            fprintf(stderr, "El protocolo %s no se correponde con UDP/TCP\n", argv[2]);
+            //fprintf(stderr, "El protocolo %s no se correponde con UDP/TCP\n", argv[2]);
             fflush(stderr);
             exit(1);
         }
     }
 }
 
-//NO TENGO CLAROS LOS ARGUMENTOS QUE SE LE PASAN AUN
-void clienteUDP(char *cliente, char *servidor)
+void clienteUDP(char *cliente, char *servidor, char *rutaOrdenes)
 {
     int i, errcode;
     int retry = RETRIES;            /* holds the retry count */
@@ -85,31 +83,25 @@ void clienteUDP(char *cliente, char *servidor)
     char hostname[MAXHOST];
     struct addrinfo hints, *res;
     FILE f;
+    char buf[TAM_BUFFER];
+    FILE *ficheroLog, *ordenes;
+    char lineaInfo[TAM_COMANDO];
+    char *divide;
+    char grupo[100];
 
-    // Cachito de Juanan
-
-    //int tmp;
-
-    /*FILE *entrada, *salida;
-    char buf[BUFFERSIZE];
-    char exitFileName[100];
-
-    entrada = fopen(nombre_fichero, "r");
-    if (NULL == entrada)
+    ordenes = fopen(rutaOrdenes, "r");
+    if (ordenes == NULL)
     {
-        fprintf(stderr, "No se ha podido abrir el fichero de ordenes %s\n", nombre_fichero);
-        fflush(stderr);
-        exit(1);
-    }*/
-
-    // Fin de cachito de Juanan
+        //fprintf(stdout, "Error al abrir el fichero de ordenes\n");
+        return;
+    }
 
     /* Create the socket. */
     s = socket(AF_INET, SOCK_DGRAM, 0);
     if (s == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to create socket\n", cliente);
+        //fprintf(stderr, "%s: unable to create socket\n", cliente);
         fflush(stderr);
         exit(1);
     }
@@ -132,7 +124,7 @@ void clienteUDP(char *cliente, char *servidor)
     if (bind(s, (const struct sockaddr *)&myaddr_in, sizeof(struct sockaddr_in)) == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to bind socket\n", cliente);
+        //fprintf(stderr, "%s: unable to bind socket\n", cliente);
         fflush(stderr);
         exit(1);
     }
@@ -140,25 +132,22 @@ void clienteUDP(char *cliente, char *servidor)
     if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to read socket address\n", cliente);
+        //fprintf(stderr, "%s: unable to read socket address\n", cliente);
         fflush(stderr);
         exit(1);
     }
 
-    // Cachito de Juanan.
+    char nombrePuerto[50];
+    sprintf(nombrePuerto, "%u.txt", ntohs(myaddr_in.sin_port));
 
-    /*
-    sfprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
-    salida = fopen(exitFileName, "w");
-    if (NULL == salida)
+    ficheroLog = fopen(nombrePuerto, "w");
+
+    if (ficheroLog == NULL)
     {
-        fprintf(stderr, "El fichero de salida no se ha podido abrir\n");
-        fflush(stderr);
-        exit(1);
+        //fprintf(stdout, "Error al crear el fichero log\n");
+        return;
     }
-    */
-
-    // Fin de cachito de Juanan
+    fprintf(ficheroLog, "Connected to %s on port %u at %s\n", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
     /* Print out a startup message for the user. */
     time(&timevar);
@@ -184,8 +173,7 @@ void clienteUDP(char *cliente, char *servidor)
     {
         /* Name was not found.  Return a
                * special value signifying the error. */
-        fprintf(stderr, "%s: No es posible resolver la IP de %s\n",
-                cliente, servidor);
+        //fprintf(stderr, "%s: No es posible resolver la IP de %s\n", cliente, servidor);
         exit(1);
     }
     else
@@ -203,106 +191,11 @@ void clienteUDP(char *cliente, char *servidor)
     if (sigaction(SIGALRM, &vec, (struct sigaction *)0) == -1)
     {
         perror(" sigaction(SIGALRM)");
-        fprintf(stderr, "%s: unable to register the SIGALRM signal\n", cliente);
+        //fprintf(stderr, "%s: unable to register the SIGALRM signal\n", cliente);
         exit(1);
     }
 
-    // Cachito de Juanan
-
-    /*
-    switch (fork())
-    {
-    case -1: // Unable to fork, for some reason. 
-    perror(argv[0]);
-    fprintf(stderr, "%s: unable to fork daemon\n", argv[0]);
-    exit(1);
-    case 0:
-        do
-        {
-        n_retry = RETRIES;
-        memset(buf, 0, BUFFERSIZE);
-        fgets(buf, BUFFERSIZE - 2, entrada);
-        fprintf("C: Sent: %s", buf);
-
-        while (n_retry > 0)
-        {
-            tmp = 0;
-            while (buf[tmp] != '\n' && buf[tmp] != '\0')
-                tmp++;
-            if (buf[tmp] != '\0')
-                buf[tmp] = '\0';
-
-            i = 0;
-            while ('\n' != buf[i] && '\r' != buf[i] && '\0' != buf[i])
-            {
-                i++;
-            }
-            if ('\n' == buf[i])
-            {
-                buf[i] = '\r';
-                buf[i + 1] = '\n';
-            }
-
-            if (sendto(s, buf, BUFFERSIZE, 0, (struct sockaddr *)&servaddr_in,
-                       sizeof(struct sockaddr_in)) == -1)
-            {
-                perror(argv[0]);
-                fprintf(stderr, "%s: unable to send request\n", argv[0]);
-                exit(1);
-            }
-            else
-            {
-                n_retry = -99;
-            }
-
-            alarm(TIMEOUT);
-            if (recvfrom(s, buf, BUFFERSIZE, 0,
-                         (struct sockaddr *)&servaddr_in, &addrlen) == -1)
-            {
-                if (errno == EINTR)
-                {
-                    fprintf("attempt %d (retries %d).\n", n_retry, RETRIES);
-                    n_retry--;
-                }
-                else
-                {
-                    fprintf("Unable to get response from");
-                    exit(1);
-                }
-            }
-            else
-            {
-                alarm(0);
-                // Print out response. 
-                if (reqaddr.s_addr == ADDRNOTFOUND)
-                    fprintf("Host %s unknown by nameserver %s\n", nombre_fichero, servidor);
-                break;
-            }
-        }
-    } while (!feof(entrada));
-
-    fclose(entrada);
-    break;
-default: // Father process. 
-    while (0 != strncmp(buf, "QUIT", 4))
-    {
-        if (recv(s, buf, BUFFERSIZE, 0) != BUFFERSIZE)
-        {
-            perror("cliente");
-            fprintf(stderr, "C: error recieving result\n");
-            exit(1);
-        }
-        if (0 != strncmp(buf, "QUIT", 4))
-            fprintf(salida, "%s\n", buf);
-    }
-    fprintf(salida, "Getting out. Bye!\n");
-
-    fclose(salida);
-    break;
-};
-*/
-
-    // Fin de cachito de Juanan.
+    //
 
     n_retry = RETRIES;
 
@@ -313,7 +206,7 @@ default: // Father process.
                    sizeof(struct sockaddr_in)) == -1)
         {
             perror(cliente);
-            fprintf(stderr, "%s: unable to send request\n", cliente);
+            //fprintf(stderr, "%s: unable to send request\n", cliente);
             exit(1);
         }
         /* Set up a timeout so I don't hang in case the packet
@@ -331,12 +224,12 @@ default: // Father process.
     				 * Need to retry the request if we have
     				 * not already exceeded the retry limit.
     				 */
-                fprintf(stdout, "attempt %d (retries %d).\n", n_retry, RETRIES);
+                //fprintf(stdout, "attempt %d (retries %d).\n", n_retry, RETRIES);
                 n_retry--;
             }
             else
             {
-                fprintf(stdout, "Unable to get response from");
+                //fprintf(stdout, "Unable to get response from");
                 exit(1);
             }
         }
@@ -345,13 +238,15 @@ default: // Father process.
             alarm(0);
             /* Print out response. */
             if (reqaddr.s_addr == ADDRNOTFOUND)
-                fprintf(stdout, "Host %s unknown by nameserver %s\n", "UDP", servidor);
+            {
+                //fprintf(stdout, "Host %s unknown by nameserver %s\n", "UDP", servidor);
+            }
             else
             {
                 /* inet_ntop para interoperatividad con IPv6 */
                 if (inet_ntop(AF_INET, &reqaddr, hostname, MAXHOST) == NULL)
                     perror(" inet_ntop \n");
-                fprintf(stdout, "Address for %s is %s\n", "UDP", hostname);
+                //fprintf(stdout, "Address for %s is %s\n", "UDP", hostname);
             }
             break;
         }
@@ -359,8 +254,8 @@ default: // Father process.
 
     if (n_retry == 0)
     {
-        fprintf(stdout, "Unable to get response from");
-        fprintf(stdout, " %s after %d attempts.\n", servidor, RETRIES);
+        //fprintf(stdout, "Unable to get response from");
+        //fprintf(stdout, " %s after %d attempts.\n", servidor, RETRIES);
     }
 
 } // Fin UDP
@@ -370,22 +265,21 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     int s; /* connected socket descriptor */
     struct addrinfo hints, *res;
     long timevar;
-    int len;                   /* contains time returned by time() */
+    int len;                        /* contains time returned by time() */
     struct sockaddr_in myaddr_in;   /* for local socket address */
     struct sockaddr_in servaddr_in; /* for server socket address */
     int addrlen, i, j, errcode;
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
-    //char newgroups[TAM_NG];
     FILE *ficheroLog, *ordenes;
     char lineaInfo[TAM_COMANDO];
     char *divide;
     char grupo[100];
 
-    printf("%s", rutaOrdenes);
     ordenes = fopen(rutaOrdenes, "r");
-    if (ordenes == NULL) {
-        fprintf(stdout, "Error al abrir el fichero de ordenes\n");
+    if (ordenes == NULL)
+    {
+        //fprintf(stdout, "Error al abrir el fichero de ordenes\n");
         return;
     }
 
@@ -394,7 +288,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     if (s == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to create socket\n", cliente);
+        //fprintf(stderr, "%s: unable to create socket\n", cliente);
         exit(1);
     }
 
@@ -415,7 +309,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     if (errcode != 0)
     {
         // Si no se encontró un host con ese hostname
-        fprintf(stderr, "%s: No es posible resolver la IP de %s\n", cliente, servidor);
+        //fprintf(stderr, "%s: No es posible resolver la IP de %s\n", cliente, servidor);
         exit(1);
     }
     else
@@ -434,7 +328,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     if (connect(s, (const struct sockaddr *)&servaddr_in, sizeof(struct sockaddr_in)) == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to connect to remote\n", cliente);
+        //fprintf(stderr, "%s: unable to connect to remote\n", cliente);
         exit(1);
     }
 
@@ -449,19 +343,9 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     if (getsockname(s, (struct sockaddr *)&myaddr_in, &addrlen) == -1)
     {
         perror(cliente);
-        fprintf(stderr, "%s: unable to read socket address\n", cliente);
+        //fprintf(stderr, "%s: unable to read socket address\n", cliente);
         exit(1);
     }
-
-    /*
-    sfprintf(exitFileName, "%d.txt", myaddr_in.sin_port);
-    salida = fopen(exitFileName, "w");
-    if (NULL == salida)
-    {
-        fprintf(stderr, "El fichero de salida no se ha podido abrir\n");
-        exit(1);
-    }
-    */
 
     /* Print out a startup message for the user. */
     time(&timevar);
@@ -473,19 +357,16 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
 	 */
     char nombrePuerto[50];
     sprintf(nombrePuerto, "%u.txt", ntohs(myaddr_in.sin_port));
-    
+
     ficheroLog = fopen(nombrePuerto, "w");
 
     if (ficheroLog == NULL)
     {
-        fprintf(stdout, "Error al crear el fichero log\n");
+        //fprintf(stdout, "Error al crear el fichero log\n");
         return;
     }
     fprintf(ficheroLog, "Connected to %s on port %u at %s\n", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
-    
-    
-    /* PRUEBA COMANDO POST */
     char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
     char comandoaux[TAM_COMANDO] = "";
     while (1)
@@ -494,9 +375,9 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
         memset(comandoaux, '\0', sizeof(comandoaux));
         memset(lineaInfo, '\0', sizeof(lineaInfo));
 
-        printf("Escribe el comando que deseas enviar al servidor: \n");
+        //printf("Escribe el comando que deseas enviar al servidor: \n");
 
-        // Descomentar esto para hacerlo por fichero.
+        //Descomentar esto para hacerlo por fichero.
         fgets(comando, TAM_COMANDO, (FILE *)ordenes);
 
         // Comentar esto para hacerlo con fichero
@@ -517,12 +398,13 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
         }
 
         // FIN DE FORMATEO DE COMANDOS.
+
         fprintf(ficheroLog, "C: %s\n", comando);
         //envio de datos
         if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
         {
-            fprintf(stderr, "%s: Connection aborted on error ", cliente);
-            fprintf(stderr, "on send number %d\n", i);
+            //fprintf(stderr, "%s: Connection aborted on error ", cliente);
+            //fprintf(stderr, "on send number %d\n", i);
             exit(1);
         }
         /* Con este codigo de aqui se recibe la respuesta al comando */
@@ -531,7 +413,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
         if (i == -1)
         {
             perror(cliente);
-            fprintf(stderr, "%s: error reading result\n", cliente);
+            //fprintf(stderr, "%s: error reading result\n", cliente);
             exit(1);
         }
 
@@ -543,29 +425,27 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                 if (shutdown(s, 1) == -1)
                 {
                     perror(cliente);
-                    fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
+                    //fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
                     exit(1);
                 }
-                printf("205 closing connection\n");
+                //printf("205 closing connection\n");
                 fprintf(ficheroLog, "S: 205 closing connection\n");
             }
             break;
         }
 
-        /* FIN RESPUESTA COMANDO POST */
-
         //######## LIST ###########
         if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
-        { //TODO: este if se puede eliminar entero
+        {
             if (strcmp(buf, "215\r\n") == 0)
             {
-                printf("215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
+                //printf("215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
                 fprintf(ficheroLog, "S: 215 listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n");
 
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
                     if (strncmp(lineaInfo, ".\r\n", 3) == 0)
@@ -577,7 +457,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             else
             {
                 // Errores al abrir el archivo.
-                fprintf(stdout, "Error al abrir el archivo de grupos\n");
+                //fprintf(stdout, "Error al abrir el archivo de grupos\n");
                 fprintf(ficheroLog, "S: Error al abrir el archivo grupos.\n");
             }
         }
@@ -588,13 +468,13 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "231\r\n") == 0)
             {
                 recv(s, comandoaux, TAM_COMANDO, 0);
-                fprintf(stdout, "%s", comandoaux);
+                //fprintf(stdout, "%s", comandoaux);
                 fprintf(ficheroLog, "S: %s", comandoaux);
 
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
                     if (strncmp(lineaInfo, ".\r\n", 3) == 0)
@@ -606,14 +486,14 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             else if (strcmp(buf, "501\r\n") == 0)
             {
 
-                printf("\n501 Error de sintaxis. ");
-                printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+                //printf("\n501 Error de sintaxis. ");
+                //printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
             }
             else
             {
-                fprintf(stdout, "%s\n", buf);
-                printf("Error al abrir el fichero de grupos.\n");
+                //fprintf(stdout, "%s\n", buf);
+                //printf("Error al abrir el fichero de grupos.\n");
                 fprintf(ficheroLog, "S: Error al abrir el fichero de grupos.\n");
             }
         }
@@ -625,13 +505,13 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "230\r\n") == 0)
             {
                 recv(s, comandoaux, TAM_COMANDO, 0);
-                fprintf(stdout, "%s", comandoaux);
+                //fprintf(stdout, "%s", comandoaux);
                 fprintf(ficheroLog, "S: %s", comandoaux);
 
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
                     if (strncmp(lineaInfo, ".\r\n", 3) == 0)
@@ -643,17 +523,16 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             else if (strcmp(buf, "501\r\n") == 0)
             {
 
-                printf("\n501 Error de sintaxis. ");
-                printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+                //printf("\n501 Error de sintaxis. ");
+                //printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
             }
             else
             {
-                fprintf(stdout, "%s\n", buf);
-                printf("Error al abrir el fichero de grupos.\n");
+                //fprintf(stdout, "%s\n", buf);
+                //printf("Error al abrir el fichero de grupos.\n");
                 fprintf(ficheroLog, "S: Error al abrir el fichero de grupos.\n");
             }
-
         }
         //######## GROUP ###########
         else if ((strncmp(comando, "GROUP", 5) == 0) || (strncmp(comando, "group", 5) == 0))
@@ -662,7 +541,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "211\r\n") == 0)
             {
                 recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos el grupo que nos han mandado
-                fprintf(stdout, "221 %s", lineaInfo);
+                //fprintf(stdout, "221 %s", lineaInfo);
                 fprintf(ficheroLog, "S: 221 %s", lineaInfo);
             }
             else if (strcmp(buf, "441\r\n") == 0)
@@ -675,19 +554,19 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                 divide = strtok(NULL, " ");
                 strcpy(grupo, divide);
                 fprintf(ficheroLog, "S: 441 %s No existe ese grupo de noticias\n", divide);
-                fprintf(stdout, "441 %s No existe ese grupo de noticias\n", divide);
+                //fprintf(stdout, "441 %s No existe ese grupo de noticias\n", divide);
             }
             else if (strcmp(buf, "501\r\n") == 0)
             {
 
-                printf("501 Error de sintaxis\n");
+                //printf("501 Error de sintaxis\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n");
             }
             else
             {
                 // Errores al abrir el archivo.
-                fprintf(stdout, "El error es: %s\n", buf);
-                fprintf(stdout, "Error al abrir el archivo de grupos\n");
+                //fprintf(stdout, "El error es: %s\n", buf);
+                //fprintf(stdout, "Error al abrir el archivo de grupos\n");
                 fprintf(ficheroLog, "S: Error al abrir el archivo grupos.\n");
             }
         }
@@ -698,13 +577,13 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "223\r\n") == 0)
             {
                 recv(s, comandoaux, TAM_COMANDO, 0);
-                fprintf(stdout, "%s", comandoaux);
+                //fprintf(stdout, "%s", comandoaux);
                 fprintf(ficheroLog, "S: %s", comandoaux);
                 memset(comandoaux, '\0', sizeof(comandoaux));
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
                     if (strncmp(lineaInfo, ".\r\n", 3) == 0)
@@ -716,20 +595,19 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             }
             else if (strcmp(buf, "501\r\n") == 0)
             {
-                fprintf(stdout, "501 Error de sintaxis. Uso: <article> <numero_articulo>\n");
+                //fprintf(stdout, "501 Error de sintaxis. Uso: <article> <numero_articulo>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <article> <numero_articulo>\n");
             }
             else if (strcmp(buf, "430\r\n") == 0)
             {
-                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                //fprintf(stdout, "430 No se encuentra ese articulo\n");
                 fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
             }
             else if (strcmp(buf, "423\r\n") == 0)
             {
-                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                //fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
                 fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
             }
-            
         }
         //######## HEAD ###########
         else if ((strncmp(comando, "HEAD", 4) == 0) || (strncmp(comando, "head", 4) == 0))
@@ -738,13 +616,13 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "221\r\n") == 0)
             {
                 recv(s, comandoaux, TAM_COMANDO, 0);
-                fprintf(stdout, "%s", comandoaux);
+                //fprintf(stdout, "%s", comandoaux);
                 fprintf(ficheroLog, "S: %s", comandoaux);
                 memset(comandoaux, '\0', sizeof(comandoaux));
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0);
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
                     if (strncmp(lineaInfo, "\r\n", 2) == 0)
@@ -756,17 +634,17 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             }
             else if (strcmp(buf, "501\r\n") == 0)
             {
-                fprintf(stdout, "501 Error de sintaxis. Uso: <head> <numero_articulo>\n");
+                //fprintf(stdout, "501 Error de sintaxis. Uso: <head> <numero_articulo>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <head> <numero_articulo>\n");
             }
             else if (strcmp(buf, "430\r\n") == 0)
             {
-                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                //fprintf(stdout, "430 No se encuentra ese articulo\n");
                 fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
             }
             else if (strcmp(buf, "423\r\n") == 0)
             {
-                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                //fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
                 fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
             }
         }
@@ -778,22 +656,23 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             if (strcmp(buf, "222\r\n") == 0)
             {
                 recv(s, comandoaux, TAM_COMANDO, 0);
-                fprintf(stdout, "%s", comandoaux);
+                //fprintf(stdout, "%s", comandoaux);
                 fprintf(ficheroLog, "S: %s", comandoaux);
                 memset(comandoaux, '\0', sizeof(comandoaux));
                 while (1)
                 {
                     recv(s, lineaInfo, TAM_COMANDO, 0);
-                    
+
                     if (strcmp(lineaInfo, "\r\n") != 0 && flagBody == 0)
                     {
                         continue;
                     }
                     flagBody = 1;
-                    fprintf(stdout, "%s", lineaInfo);
+                    //fprintf(stdout, "%s", lineaInfo);
                     fprintf(ficheroLog, "S: %s", lineaInfo);
 
-                    if (strcmp(lineaInfo, ".\r\n") == 0) {
+                    if (strcmp(lineaInfo, ".\r\n") == 0)
+                    {
                         memset(lineaInfo, '\0', sizeof(lineaInfo));
                         break;
                     }
@@ -802,17 +681,17 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             }
             else if (strcmp(buf, "501\r\n") == 0)
             {
-                fprintf(stdout, "501 Error de sintaxis. Uso: <body> <numero_articulo>\n");
+                //fprintf(stdout, "501 Error de sintaxis. Uso: <body> <numero_articulo>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <body> <numero_articulo>\n");
             }
             else if (strcmp(buf, "430\r\n") == 0)
             {
-                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                //fprintf(stdout, "430 No se encuentra ese articulo\n");
                 fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
             }
             else if (strcmp(buf, "423\r\n") == 0)
             {
-                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                //fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
                 fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
             }
         }
@@ -821,7 +700,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
         {
             if (strcmp(buf, "340\r\n") == 0)
             { // Se puede realizar el post.
-                printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
+                //printf("340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
                 fprintf(ficheroLog, "S: 340 Subiendo un articulo; finalice con una linea que solo contenga un punto\n");
 
                 // Vamos a enviar bloques de 510 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
@@ -829,9 +708,9 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                 {
                     memset(comando, '\0', sizeof(comando));
                     /* -------------------------------------------------------------------------------- */
-                    
+
                     //fgets(comando, TAM_COMANDO, stdin); // Comentar esto para hacerlo con ficheros.
-                    fgets(comando, TAM_COMANDO, (FILE*)ordenes); // Descomentar esto para hacerlo con ficheros.
+                    fgets(comando, TAM_COMANDO, (FILE *)ordenes); // Descomentar esto para hacerlo con ficheros.
 
                     /* ---------------------------------------------------------------------------------------- */
 
@@ -851,47 +730,45 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                     fprintf(ficheroLog, "C: %s", comando);
                     if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO) // Este send da el error que aparece en la esquina derecha de la pantalla
                     {
-                        fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                        fprintf(stderr, "on send number %d\n", i);
+                        //fprintf(stderr, "%s: Connection aborted on error ", cliente);
+                        //fprintf(stderr, "on send number %d\n", i);
                         fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
                         fprintf(ficheroLog, "on send number %d\n", i);
                         exit(1);
                     }
                 }
 
-             
-
                 // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
                 i = recv(s, buf, TAM_BUFFER, 0);
                 if (strcmp(buf, "240\r\n") == 0)
                 {
-                    printf("240 Article received OK\n");
+                    //printf("240 Article received OK\n");
                     fprintf(ficheroLog, "S: 240 Article received OK\n");
                 }
                 else
                 {
-                    printf("441 Posting failed\n");
+                    //printf("441 Posting failed\n");
                     fprintf(ficheroLog, "S: 441 Posting failed\n");
                 }
             }
             else
-            { // Este else seria un else if con todos los demas codigos https://tools.ietf.org/html/rfc3977#section-6.3.1
+            {
                 fprintf(ficheroLog, "Received result number %s\n", buf);
                 //printf("440 Posting no permitido\n");
             }
         }
         else
-        { // Aqui irian los distintos comandos
+        {
             if (strcmp(buf, "500\r\n") == 0)
             {
-                printf("500 Comando no reconocido\n");
+                //printf("500 Comando no reconocido\n");
                 fprintf(ficheroLog, "S: 500 Comando no reconocido\n");
             }
         }
     }
     /* Print message indicating completion of task. */
     time(&timevar);
-    fprintf(stdout, "\n\nAll done at %s", (char *)ctime(&timevar));
+    //fprintf(stdout, "\n\nAll done at %s", (char *)ctime(&timevar));
     fprintf(ficheroLog, "\n\nAll done at %s", (char *)ctime(&timevar));
     fclose(ficheroLog);
 } // Fin TCP
