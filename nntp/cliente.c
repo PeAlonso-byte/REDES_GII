@@ -527,7 +527,9 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                 //printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
                 fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
             }
-            else
+            else if (strcmp(buf, "430\r\n") == 0){
+                fprintf(ficheroLog, "S: 430 No se encuentra el articulo.\n"); // Enviamos el primer comando
+            } else 
             {
                 //fprintf(stdout, "%s\n", buf);
                 //printf("Error al abrir el fichero de grupos.\n");

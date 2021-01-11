@@ -935,7 +935,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				}
 				else
 				{
-					// No existe grupo de noticias.
+					strcpy(buf, "430\r\n");
+					time(&timevar);
+					hora = (char *)ctime(&timevar);
+					hora[strlen(hora) - 1] = '\0';
+					fprintf(fLog, "S: %s 430 No se encuentra el articulo.\n", hora); // Enviamos el primer comando
+					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+						errout(hostname);
 				}
 			}
 
