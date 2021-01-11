@@ -400,6 +400,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
         // FIN DE FORMATEO DE COMANDOS.
 
         fprintf(ficheroLog, "C: %s\n", comando);
+        memset(buf, '\0', sizeof(buf));
         //envio de datos
         if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
         {
@@ -408,6 +409,9 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
             exit(1);
         }
         /* Con este codigo de aqui se recibe la respuesta al comando */
+        
+
+
         i = recv(s, buf, TAM_BUFFER, 0);
 
         if (i == -1)
@@ -428,6 +432,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
                     //fprintf(stderr, "%s: unable to shutdown socket\n", cliente);
                     exit(1);
                 }
+                fclose(ordenes);
                 //printf("205 closing connection\n");
                 fprintf(ficheroLog, "S: 205 closing connection\n");
             }

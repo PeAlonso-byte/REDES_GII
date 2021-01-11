@@ -1549,9 +1549,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			}
 		}
 		//######## POST ###########
-		else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
+		else if ((strncmp(comando, "POST\r\n", 4) == 0) || (strncmp(comando, "post\r\n", 4) == 0))
 		{
 			flagExisteGrupo = 0;
+			flagError = 0;
+			flagNews = 0;
+			flagControl = 0;
 			n = 0;
 			strcpy(buf, "340\r\n");
 			time(&timevar);

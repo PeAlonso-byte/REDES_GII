@@ -1,8 +1,8 @@
 Newsgroups: local.redes
 Subject: Sobre los sockets
-Date: 2021111 152514 Mon, 11 Jan 2021 15:25:14 (CET)
-Message-ID: <7@localhost>
+Date: 2021111 154220 Mon, 11 Jan 2021 15:42:20 (CET)
+Message-ID: <4@localhost>
 
-Los sockets son un API de programación en red.
-Permite utilizar los servicios de los protocolos de transporte TCP y UDP.
+Los sockets son un API DE programacion en red.
+Permite utilizar los servidios los rotocolos de transporte.
 .
