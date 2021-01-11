@@ -368,7 +368,8 @@ void clienteTCP(char *cliente, char *servidor)
 {
     int s; /* connected socket descriptor */
     struct addrinfo hints, *res;
-    long timevar;                   /* contains time returned by time() */
+    long timevar;
+    int len;                   /* contains time returned by time() */
     struct sockaddr_in myaddr_in;   /* for local socket address */
     struct sockaddr_in servaddr_in; /* for server socket address */
     int addrlen, i, j, errcode;
@@ -378,6 +379,7 @@ void clienteTCP(char *cliente, char *servidor)
     FILE *ficheroLog;
     char lineaInfo[TAM_COMANDO];
     char *divide;
+    char grupo[100];
     /*
     FILE *entrada, *salida;
     char buf[TAM_BUFFER];
@@ -489,10 +491,11 @@ void clienteTCP(char *cliente, char *servidor)
 
     /* PRUEBA COMANDO POST */
     char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
-
+    char comandoaux[TAM_COMANDO] = "";
     while (1)
     {
         memset(comando, '\0', sizeof(comando));
+        memset(comandoaux, '\0', sizeof(comandoaux));
         memset(lineaInfo, '\0', sizeof(lineaInfo));
         printf("Escribe el comando que deseas enviar al servidor: \n");
         fgets(comando, TAM_COMANDO, stdin);
@@ -631,6 +634,7 @@ void clienteTCP(char *cliente, char *servidor)
         //######## GROUP ###########
         else if ((strncmp(comando, "GROUP", 5) == 0) || (strncmp(comando, "group", 5) == 0))
         {
+            memset(grupo, '\0', sizeof(grupo));
             if (strcmp(buf, "211\r\n") == 0)
             {
                 recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos el grupo que nos han mandado
@@ -645,9 +649,9 @@ void clienteTCP(char *cliente, char *servidor)
                 comando[longitudComando] = '\0';
                 divide = strtok(comando, " ");
                 divide = strtok(NULL, " ");
-
-                fprintf(ficheroLog, "S: 441 %s is unknown\n", divide);
-                fprintf(stdout, "441 %s is unknown\n", divide);
+                strcpy(grupo, divide);
+                fprintf(ficheroLog, "S: 441 %s No existe ese grupo de noticias\n", divide);
+                fprintf(stdout, "441 %s No existe ese grupo de noticias\n", divide);
             }
             else if (strcmp(buf, "501\r\n") == 0)
             {
@@ -666,58 +670,126 @@ void clienteTCP(char *cliente, char *servidor)
         //######## ARTICLE ###########
         else if ((strncmp(comando, "ARTICLE", 7) == 0) || (strncmp(comando, "article", 7) == 0))
         {
-            /*if (strcmp(buf, "223\r\n") == 0)
+            memset(lineaInfo, '\0', sizeof(lineaInfo));
+            if (strcmp(buf, "223\r\n") == 0)
             {
-                printf("Recibiendo correctamente 223\n");
-            }*/
+                recv(s, comandoaux, TAM_COMANDO, 0);
+                fprintf(stdout, "%s", comandoaux);
+                fprintf(ficheroLog, "S: %s", comandoaux);
+                memset(comandoaux, '\0', sizeof(comandoaux));
+                while (1)
+                {
+                    recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
+                    fprintf(stdout, "%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
 
-            //printf("\nEnvío desde cliente:%s\n", comando);
-
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
-            {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0)
+                    {
+                        break;
+                    }
+                    memset(lineaInfo, '\0', sizeof(lineaInfo));
+                }
             }
+            else if (strcmp(buf, "501\r\n") == 0)
+            {
+                fprintf(stdout, "501 Error de sintaxis. Uso: <article> <numero_articulo>\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <article> <numero_articulo>\n");
+            }
+            else if (strcmp(buf, "430\r\n") == 0)
+            {
+                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
+            }
+            else if (strcmp(buf, "423\r\n") == 0)
+            {
+                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
+            }
+            
         }
         //######## HEAD ###########
         else if ((strncmp(comando, "HEAD", 4) == 0) || (strncmp(comando, "head", 4) == 0))
         {
-            /*if (strcmp(buf, "221\r\n") == 0)
+            memset(lineaInfo, '\0', sizeof(lineaInfo));
+            if (strcmp(buf, "221\r\n") == 0)
             {
-                printf("Recibiendo correctamente 221\n");
-            }*/
+                recv(s, comandoaux, TAM_COMANDO, 0);
+                fprintf(stdout, "%s", comandoaux);
+                fprintf(ficheroLog, "S: %s", comandoaux);
+                memset(comandoaux, '\0', sizeof(comandoaux));
+                while (1)
+                {
+                    recv(s, lineaInfo, TAM_COMANDO, 0);
+                    fprintf(stdout, "%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
 
-            //printf("\nEnvío desde cliente:%s\n", comando);
-
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                    if (strncmp(lineaInfo, "\r\n", 2) == 0)
+                    {
+                        break;
+                    }
+                    memset(lineaInfo, '\0', sizeof(lineaInfo));
+                }
+            }
+            else if (strcmp(buf, "501\r\n") == 0)
             {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                fprintf(stdout, "501 Error de sintaxis. Uso: <head> <numero_articulo>\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <head> <numero_articulo>\n");
+            }
+            else if (strcmp(buf, "430\r\n") == 0)
+            {
+                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
+            }
+            else if (strcmp(buf, "423\r\n") == 0)
+            {
+                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
             }
         }
         //######## BODY ###########
         else if ((strncmp(comando, "BODY", 4) == 0) || (strncmp(comando, "body", 4) == 0))
         {
-            /*if (strcmp(buf, "222\r\n") == 0)
+            int flagBody = 0;
+            memset(lineaInfo, '\0', sizeof(lineaInfo));
+            if (strcmp(buf, "222\r\n") == 0)
             {
-                printf("Recibiendo correctamente 222\n");
-            }*/
+                recv(s, comandoaux, TAM_COMANDO, 0);
+                fprintf(stdout, "%s", comandoaux);
+                fprintf(ficheroLog, "S: %s", comandoaux);
+                memset(comandoaux, '\0', sizeof(comandoaux));
+                while (1)
+                {
+                    recv(s, lineaInfo, TAM_COMANDO, 0);
+                    
+                    if (strcmp(lineaInfo, "\r\n") != 0 && flagBody == 0)
+                    {
+                        continue;
+                    }
+                    flagBody = 1;
+                    fprintf(stdout, "%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
 
-            //printf("\nEnvío desde cliente:%s\n", comando);
-
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
+                    if (strcmp(lineaInfo, ".\r\n") == 0) {
+                        memset(lineaInfo, '\0', sizeof(lineaInfo));
+                        break;
+                    }
+                    memset(lineaInfo, '\0', sizeof(lineaInfo));
+                }
+            }
+            else if (strcmp(buf, "501\r\n") == 0)
             {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                fprintf(stdout, "501 Error de sintaxis. Uso: <body> <numero_articulo>\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <body> <numero_articulo>\n");
+            }
+            else if (strcmp(buf, "430\r\n") == 0)
+            {
+                fprintf(stdout, "430 No se encuentra ese articulo\n");
+                fprintf(ficheroLog, "S: 430 No se encuentra ese articulo\n");
+            }
+            else if (strcmp(buf, "423\r\n") == 0)
+            {
+                fprintf(stdout, "423 No existe el articulo en este grupo de noticias\n");
+                fprintf(ficheroLog, "S: 423 No existe el articulo en este grupo de noticias\n");
             }
         }
         //######## POST ###########
