@@ -43,6 +43,7 @@ int main(int argc, char *argv[])
         argv[0]=cliente
         argv[1]=localhost
         argv[2]=TCP/UDP
+        argv[3]=fichero
     */
     if (argc != 4)
     {
@@ -381,6 +382,7 @@ void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
     char *divide;
     char grupo[100];
 
+    printf("%s", rutaOrdenes);
     ordenes = fopen(rutaOrdenes, "r");
     if (ordenes == NULL) {
         fprintf(stdout, "Error al abrir el fichero de ordenes\n");
