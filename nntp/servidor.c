@@ -330,9 +330,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int token3, token4;
 	char *separator, *separator1, *separator2, *separator5;
 	int separator3, separator4;
-	char *grusub, *grupo, *subgrupo;
+	char *grusub, *grupo, *subgrupo, *gruponews;
 	char ruta[100];
 	char grupoaux[100];
+	char grupoauxnews[100];
+	char temaux[100];
 	char *grusub1, *grupo1, *subgrupo1;
 	char *sepnoticia, *tema, *numeroId;
 	int fechanoticia, horanoticia;
@@ -357,6 +359,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 	int flagId = 0;
 	char grupoaux2[100];
 	int flagBody = 0;
+	int flagNews = 0;
+	int flagControl = 0;
+	char *hora;
 
 	/* Look up the host information for the remote host
 	 * that we have connected with.  Its internet address
@@ -386,16 +391,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * that does require it.
 		 */
 
-	fLog = fopen("nntpd.log", "w");
+	fLog = fopen("nntpd.log", "a");
 	if (fLog == NULL)
 	{
 		fprintf(stdout, "Error al abrir el fichero nntpd.log\n");
 		exit(1);
 	}
 	time(&timevar);
-	fprintf(fLog, "Startup from %s port %u at %s : TCP\n", hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
+	hora = (char *)ctime(&timevar);
+	hora[strlen(hora) - 1] = '\0';
+	fprintf(fLog, "Startup from %s port %u at %s : TCP\n", hostname, ntohs(clientaddr_in.sin_port), hora);
 
-	printf("Startup from %s port %u at %s", hostname, ntohs(clientaddr_in.sin_port), (char *)ctime(&timevar));
+	printf("Startup from %s port %u at %s", hostname, ntohs(clientaddr_in.sin_port), hora);
 
 	/* Set the socket for a lingering, graceful close.
 		 * This will cause a final close of this socket to wait until all of the
@@ -451,7 +458,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			 * request that a real server might do.
 			 */
 		/* Send a response back to the client. */
-		fprintf(fLog, "C: %s --> %s", (char *)ctime(&timevar), comando);
+		hora = (char *)ctime(&timevar);
+		hora[strlen(hora) - 1] = '\0';
+		fprintf(fLog, "C: %s %s", hora, comando);
 		//######## LIST ###########
 		if ((strcmp(comando, "LIST\r\n") == 0) || (strcmp(comando, "list\r\n") == 0))
 		{
@@ -461,7 +470,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 				strcpy(buf, "100\r\n");
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
@@ -470,7 +479,9 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				strcpy(buf, "215\r\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> %s listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n", (char *)ctime(&timevar), buf);
+				hora = (char *)ctime(&timevar);
+				hora[strlen(hora) - 1] = '\0';
+				fprintf(fLog, "S: 215 %s listado de los grupos en formato <nombre> <ultimo> <primero> <fecha> <descripcion>\n", hora);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 
@@ -480,12 +491,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						errout(hostname);
 
 					time(&timevar);
-					fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), linea);
+					fprintf(fLog, "S: %s %s\n", hora, linea);
 				}
 				if (send(s, ".\r\n", TAM_COMANDO, 0) != TAM_COMANDO) // Enviamos el . para indicar el fin de grupos.
 					errout(hostname);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s .\n", hora);
 				fclose(grupos);
 			}
 
@@ -502,7 +513,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 
 			flagError = 0;
 			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), comando);
+			fprintf(fLog, "S: %s %s", hora, comando);
 			//fprintf(stdout, "Servidor recibe: %s\n", comando);
 			int longitudComando = strlen(comando);
 			comando[longitudComando - 1] = '\0';
@@ -527,21 +538,21 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					{
 						flagError = 1;
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", hora);
 					}
 				}
 				else
 				{
 					flagError = 1;
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+					fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", hora);
 				}
 			}
 			else
 			{
 				flagError = 1;
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n", hora);
 			}
 
 			grupos = fopen("./noticias/grupos", "rt");
@@ -552,7 +563,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				//printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 			}
 
 			// Quiere decir que esta todo correcto .
@@ -566,11 +577,15 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			{
 				strcpy(buf, "231\r\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+				fprintf(fLog, "S: %s 231 Nuevos grupos desde dia %s %s\n", hora, newFecha, newHora);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 
-				//printf("\n231 Nuevos grupos desde %.6d %.6d\n", token3, token4);
+				sprintf(comandoaux, "231 Nuevos grupos desde %s %s\n", newFecha, newHora);
+				if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
+					errout(hostname);
+
+				fprintf(fLog, "231 Nuevos grupos desde %s %s", newFecha, newHora);
 				time(&timevar);
 
 				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
@@ -599,7 +614,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
 							errout(hostname);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineaux);
+						fprintf(fLog, "S: %s %s\n", hora, lineaux);
 					}
 					//si la fecha es la misma, compruebo la hora
 					if (n_fecha == newFecha && n_hora >= newHora)
@@ -607,7 +622,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
 							errout(hostname);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineaux);
+						fprintf(fLog, "S: %s %s\n", hora, lineaux);
 					}
 				}
 				//printf(".\n");
@@ -615,298 +630,280 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 
 				time(&timevar);
-				fprintf(fLog, "S: %s --> .\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s .\n", hora);
 				fclose(grupos);
 			}
 		}
 		//######## NEWNEWS ###########
 		else if ((strncmp(comando, "NEWNEWS", 7) == 0) || (strncmp(comando, "newnews", 7) == 0))
 		{
-			strcpy(buf, "230\r\n");
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
-			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
-				errout(hostname);
-
-			recv(s, comando, TAM_COMANDO, 0);
-			//fprintf(stdout, "Servidor recibe: %s\n", comando);
-			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), comando);
-
+			flagError = 0;
+			flagNews = 0;
+			flagControl = 0;
+			memset(n_fecha, '\0', sizeof(n_fecha));
+			memset(n_hora, '\0', sizeof(n_hora));
+			memset(comandoaux, '\0', sizeof(comandoaux));
+			int longitudComando = strlen(comando);
+			comando[longitudComando] = '\0';
+			comando[longitudComando - 1] = '\0';
+			comando[longitudComando - 2] = '\0';
 			token = strtok(comando, " ");
-			if (token != NULL) //no hace falta comprobar el contenido porque si has entrado aqui
-							   //ya sabes que es porque has introducido "newnews"
+			if (token != NULL) //no hace falta comprobar el contenido porque si has entrado aqui ya sabes que es porque has introducido "newnews"
 			{
 				//"newnews"
 				token2 = token;
-				//printf("\n%s\n", token2);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis. ");
-				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			token = strtok(NULL, " ");
-			if (token != NULL)
-			{
-				//grupo.subgrupo de noticias
-				token5 = token;
-				token6 = token; //para luego dividirlo conservando token5
-								//printf("%s\n", token5);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis en el grupo de noticias. ");
-				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			token = strtok(NULL, " ");
-			if ((strlen(token) == 6))
-			{
-				//fecha
-				token3 = atoi(token);
-				//printf("%d\n", token3);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis en la fecha. ");
-				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			token = strtok(NULL, " ");
-			if ((strlen(token) > 6) && (strlen(token) < 9))
-			{
-				//hora
-				token4 = atoi(token);
-				//printf("%d\n", token4);
-			}
-			else
-			{
-				printf("\n501 Error de sintaxis en la hora. ");
-				printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", (char *)ctime(&timevar));
-			}
-			grusub1 = strtok(token6, ".");
-			if (grusub1 != NULL)
-			{
-				//grupo
-				grupo1 = grusub1;
-				//printf("\nNombre grupo introducido:%s\n", grupo1);
-			}
-			else
-			{
-				printf("El nombre del grupo esta vacio\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-			}
-			grusub1 = strtok(NULL, ".");
-			if (grusub1 != NULL)
-			{
-				//subgrupo
-				subgrupo1 = grusub1;
-				//printf("\nNombre subgrupo introducido:%s\n", subgrupo1);
-			}
-			else
-			{
-				printf("El nombre del subgrupo esta vacio\n");
-				time(&timevar);
-				fprintf(fLog, "S: %s --> El nombre del subgrupo esta vacio\n", (char *)ctime(&timevar));
-			}
+				token = strtok(NULL, " ");
+				if (token != NULL)
+				{
+					//grupo.subgrupo de noticias
+					gruponews = token;
+					strcpy(grupoauxnews, gruponews);
 
-			/* Enviar al cliente */
-
-			printf("\n230 Nuevos articulos desde %.6d %.6d\n", token3, token4);
-			time(&timevar);
-			fprintf(fLog, "S: %s --> 230 Nuevos articulos desde %.6d %.6d\n", (char *)ctime(&timevar), token3, token4);
+					token = strtok(NULL, " ");
+					if ((strlen(token) == 6))
+					{
+						//fecha
+						strcpy(n_fecha, token);
+						token3 = atoi(token);
+						//printf("%d\n", token3);
+						token = strtok(NULL, " ");
+						if ((strlen(token) == 6))
+						{
+							//hora
+							strcpy(n_hora, token);
+							token4 = atoi(token);
+							//printf("%d\n", token4);
+						}
+						else
+						{
+							flagError = 1;
+							//printf("\n501 Error de sintaxis en la hora. ");
+							//printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+							//time(&timevar);
+							//fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", hora);
+						}
+					}
+					else
+					{
+						flagError = 1;
+						//printf("\n501 Error de sintaxis en la fecha. ");
+						//printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+						//time(&timevar);
+						//fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", hora);
+					}
+				}
+				else
+				{
+					flagError = 1;
+					//printf("\n501 Error de sintaxis en el grupo de noticias. ");
+					//printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+					//time(&timevar);
+					//fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", hora);
+				}
+			}
+			else
+			{
+				flagError = 1;
+				//printf("\n501 Error de sintaxis. ");
+				//printf("Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n");
+				//time(&timevar);
+				//fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", hora);
+			}
 
 			grupos = fopen("./noticias/grupos", "rt");
 			if (grupos == NULL)
 			{
+				strcpy(buf, "100\r\n");
 				printf("No se ha podido leer el fichero grupos");
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 			}
-
-			while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
+			else if (flagError == 1)
 			{
-				separator = strtok(linea, " ");
-				if (separator != NULL)
+				strcpy(buf, "501\r\n");
+				time(&timevar);
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <newnews> <grupo_noticias> <YYMMDD> <HHMMSS>\n", hora);
+				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+					errout(hostname);
+			}
+			else // Aqui ya hemos comprobado que no hay ningun error de sintaxis
+			{
+				while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
 				{
-					//nombre
-					separator2 = separator;
-					separator5 = separator;
-					//printf("\nNombre grupo.subgrupo fichero:%s\n", separator2);
+					separator = strtok(linea, " ");
+					if (separator != NULL)
+					{
+						//nombre
+						grusub = separator;
+						//printf("\nNombre grupo.subgrupo fichero:%s\n", separator2);
+					}
+					separator = strtok(NULL, " ");
+					if (separator != NULL)
+					{
+						//ultimo
+						separator3 = atoi(separator);
+						//printf("\nNumero de articulos:%d\n", separator3);
+					}
+
+					if ((strcmp(gruponews, grusub) == 0))
+					{
+						flagNews = 1;
+						break;
+					}
 				}
-				else
+				fclose(grupos);
+
+				if (flagNews == 1) // Quiere decir que existe el grupo
 				{
-					printf("El nombre del grupo esta vacio\n");
+					for (int i = 0; i < strlen(grusub); i++)
+					{
+						if (grusub[i] == '.')
+						{
+							grusub[i] = '/';
+						}
+					}
+
+					strcpy(buf, "230\r\n");
 					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				separator = strtok(NULL, " ");
-				if (separator != NULL)
-				{
-					//ultimo
-					separator3 = atoi(separator);
-					//printf("\nNumero de articulos:%d\n", separator3);
-				}
-				else
-				{
-					printf("El numero del ultimo articulo del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El numero del ultimo articulo del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				grusub = strtok(separator5, ".");
-				if (grusub != NULL)
-				{
-					//grupo
-					grupo = grusub;
-					//printf("\nNombre grupo fichero:%s\n", grupo);
-				}
-				else
-				{
-					printf("El nombre del grupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				grusub = strtok(NULL, ".");
-				if (grusub != NULL)
-				{
-					//subgrupo
-					subgrupo = grusub;
-					//printf("\nNombre subgrupo fichero:%s\n", subgrupo);
-				}
-				else
-				{
-					printf("El nombre del subgrupo esta vacio\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> El nombre del subgrupo esta vacio\n", (char *)ctime(&timevar));
-				}
-				if ((strcmp(grupo, grupo1) == 0) && (strcmp(subgrupo, subgrupo1) == 0))
-				//if ((strncmp(grupo, grupo1, strlen(grupo1)) == 0) && (strncmp(subgrupo, subgrupo1, strlen(subgrupo1)) == 0))
-				{
+					fprintf(fLog, "S: %s 230 Nuevos articulos desde dia %s %s\n", hora, n_fecha, n_hora); // Enviamos el primer comando
+					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
+						errout(hostname);
+
+					/*char aux[10];
+					for (int i = 0, j = 0; i < strlen(n_fecha) + 2; i++, j++)
+					{
+						if (i % 2 == 0 && i != 0)
+						{
+
+							aux[j] = '/';
+							i--;
+						}
+						aux[j] = n_fecha[i];
+					}*/
+
+					//fprintf(stdout, "La fecha es: %s", aux);
+					sprintf(comandoaux, "230 Nuevos articulos desde %s %s\n", n_fecha, n_hora);
+					fprintf(fLog, "S: %s %s", hora, comandoaux); // Enviamos el primer comando
+					if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
+						errout(hostname);
+
 					for (int i = 1; i <= separator3; i++)
 					{
-						sprintf(ruta, "./noticias/articulos/%s/%s/%d", grupo, subgrupo, i);
+						flagControl = 0;
+						memset(lineanoticia, '\0', sizeof(lineanoticia));
+						memset(temaux, '\0', sizeof(temaux));
+						memset(comandoaux, '\0', sizeof(comandoaux));
+						sprintf(ruta, "./noticias/articulos/%s/%d", grusub, i);
+
+						//fprintf(stdout, "La ruta es : %s\n", ruta);
 						noticia = fopen(ruta, "rt");
 						if (noticia == NULL)
 						{
 							printf("No se ha podido leer el fichero de la noticia");
 							time(&timevar);
-							fprintf(fLog, "S: %s --> No se ha podido leer el fichero de la noticia\n", (char *)ctime(&timevar));
+							fprintf(fLog, "S: %s No se ha podido leer el fichero de la noticia\n", hora);
 						}
-
-						while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
+						else
 						{
-							sepnoticia = strtok(lineanoticia, " ");
-							if (sepnoticia != NULL)
+							while (fgets(lineanoticia, TAM_COMANDO, (FILE *)noticia))
 							{
-								//subject /* Enviar al cliente linea por linea */
-								if ((strcmp(sepnoticia, "Subject:") == 0))
+								sepnoticia = strtok(lineanoticia, " ");
+								if (sepnoticia != NULL)
 								{
-									sepnoticia = strtok(NULL, "\n");
-									if (sepnoticia != NULL)
+									//subject /* Enviar al cliente linea por linea */
+									if ((strcmp(sepnoticia, "Subject:") == 0))
 									{
-										//tema
-										tema = sepnoticia;
-										printf("\nTema del articulo: %s\n", tema);
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Tema del articulo: %s\n", (char *)ctime(&timevar), tema);
+										sepnoticia = strtok(NULL, "\n");
+										if (sepnoticia != NULL)
+										{
+											//tema
+											tema = sepnoticia;
+											strcpy(temaux, tema);
+											//printf("\nTema del articulo: %s\n", tema);
+											//time(&timevar);
+											//fprintf(fLog, "S: %s Tema del articulo: %s\n", hora, tema);
+											flagControl++;
+										}
 									}
-									else
+									//fecha
+									if ((strcmp(sepnoticia, "Date:") == 0))
 									{
-										printf("Tema del articulo vacio\n");
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Tema del articulo vacio\n", (char *)ctime(&timevar));
+										sepnoticia = strtok(NULL, " ");
+										if (sepnoticia != NULL)
+										{
+											//fecha noticia
+											fechanoticia = atoi(sepnoticia);
+											//printf("\nFecha del articulo:%d\n", fechanoticia);
+											//time(&timevar);
+											//fprintf(fLog, "S: %s Fecha del articulo:%d\n", hora, fechanoticia);
+											flagControl++;
+										}
+										sepnoticia = strtok(NULL, " ");
+										if (sepnoticia != NULL)
+										{
+											//hora noticia
+											horanoticia = atoi(sepnoticia);
+											//printf("\nHora del articulo:%d\n", horanoticia);
+											//time(&timevar);
+											//fprintf(fLog, "S: %s Hora del articulo:%d\n", hora, horanoticia);
+											flagControl++;
+										}
+									}
+									//id
+									if ((strcmp(sepnoticia, "Message-ID:") == 0))
+									{
+										sepnoticia = strtok(NULL, " ");
+										if (sepnoticia != NULL)
+										{
+											//id noticia
+											numeroId = sepnoticia;
+											//printf("\nID del articulo:%s\n", numeroId);
+											//time(&timevar);
+											//fprintf(fLog, "S: %s ID del articulo:%s\n", hora, numeroId);
+											flagControl++;
+											break;
+										}
 									}
 								}
-								//fecha
-								if ((strcmp(sepnoticia, "Date:") == 0))
+							}
+							fclose(noticia);
+							if (flagControl == 4)
+							{
+								//si la fecha es mayor, me da igual la hora
+								if (fechanoticia > token3)
 								{
-									sepnoticia = strtok(NULL, " ");
-									if (sepnoticia != NULL)
-									{
-										//fecha noticia
-										fechanoticia = atoi(sepnoticia);
-										printf("\nFecha del articulo:%d\n", fechanoticia);
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Fecha del articulo:%d\n", (char *)ctime(&timevar), fechanoticia);
-									}
-									else
-									{
-										printf("Fecha del articulo vacia\n");
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Fecha del articulo vacia\n", (char *)ctime(&timevar));
-									}
-									sepnoticia = strtok(NULL, " ");
-									if (sepnoticia != NULL)
-									{
-										//hora noticia
-										horanoticia = atoi(sepnoticia);
-										printf("\nHora del articulo:%d\n", horanoticia);
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Hora del articulo:%d\n", (char *)ctime(&timevar), horanoticia);
-									}
-									else
-									{
-										printf("Hora del articulo vacia\n");
-										time(&timevar);
-										fprintf(fLog, "S: %s --> Hora del articulo vacia\n", (char *)ctime(&timevar));
-									}
+									sprintf(comandoaux, "Articulo numero: %d tema: %s ID: %s", i, temaux, numeroId);
+									if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
+										errout(hostname);
+
+									time(&timevar);
+									fprintf(fLog, "S: %s %s", hora, comandoaux);
 								}
-								//id
-								if ((strcmp(sepnoticia, "Message-ID:") == 0))
+								//si la fecha es la misma, compruebo la hora
+								if (fechanoticia == token3 && horanoticia >= token4)
 								{
-									sepnoticia = strtok(NULL, "\n");
-									if (sepnoticia != NULL)
-									{
-										//id noticia
-										numeroId = sepnoticia;
-										printf("\nID del articulo:%s\n", numeroId);
-										time(&timevar);
-										fprintf(fLog, "S: %s --> ID del articulo:%s\n", (char *)ctime(&timevar), numeroId);
-									}
-									else
-									{
-										printf("ID del articulo vacia\n");
-										time(&timevar);
-										fprintf(fLog, "S: %s --> ID del articulo vacio\n", (char *)ctime(&timevar));
-									}
+									sprintf(comandoaux, "Articulo numero: %d tema: %s ID: %s", i, temaux, numeroId);
+									if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
+										errout(hostname);
+
+									time(&timevar);
+									fprintf(fLog, "S: %s %s", hora, comandoaux);
 								}
 							}
 							else
 							{
-								printf("El fichero noticia esta vacio\n");
-								time(&timevar);
-								fprintf(fLog, "S: %s --> El fichero noticia esta vacio\n", (char *)ctime(&timevar));
+								//fprintf(stdout, "El flagControl ha fallado: %d\n", flagControl);
 							}
 						}
-						//si la fecha es mayor, me da igual la hora
-						if (fechanoticia > token3)
-						{
-							printf("\nArticulo numero: %d, tema: %s, ID: %s", i, tema, numeroId);
-							time(&timevar);
-							fprintf(fLog, "S: %s --> Articulo numero: %d, tema: %s, ID: %s\n", (char *)ctime(&timevar), i, tema, numeroId);
-						}
-						//si la fecha es la misma, compruebo la hora
-						if (fechanoticia == token3 && horanoticia >= token4)
-						{
-							printf("\nArticulo numero: %d, tema: %s, ID: %s", i, tema, numeroId);
-							time(&timevar);
-							fprintf(fLog, "S: %s --> Articulo numero: %d, tema: %s, ID: %s\n", (char *)ctime(&timevar), i, tema, numeroId);
-						}
 					}
+					if (send(s, ".\r\n", TAM_COMANDO, 0) != TAM_COMANDO) // Para de enviar mensajes.
+						errout(hostname);
 				}
 				else
 				{
-					printf("\n411 no existe ese grupo de noticias\n");
-					time(&timevar);
-					fprintf(fLog, "S: %s --> 411 no existe ese grupo de noticias\n", (char *)ctime(&timevar));
+					// No existe grupo de noticias.
 				}
 			}
 
@@ -942,7 +939,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					//printf("\n501 Error de sintaxis. ");
 					//printf("Uso: Uso: <group> <grupo_noticias>\n");
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
+					fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", hora);
 				}
 			}
 			else
@@ -951,7 +948,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				//printf("\n501 Error de sintaxis. ");
 				//printf("Uso: <group> <grupo_noticias>\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", hora);
 			}
 
 			grupos = fopen("./noticias/grupos", "rt");
@@ -962,7 +959,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				//printf("No se ha podido leer el fichero grupos");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 			}
 			else if (flagError == 1)
 			{
@@ -970,7 +967,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <group> <grupo_noticias>\n", hora);
 			}
 			else
 			{
@@ -989,7 +986,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					{
 						printf("El nombre del grupo esta vacio\n");
 						time(&timevar);
-						fprintf(fLog, "S: %s --> El nombre del grupo esta vacio\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s El nombre del grupo esta vacio\n", hora);
 					}*/
 					if ((strcmp(grupo, grupo1) == 0))
 					{
@@ -1003,18 +1000,18 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					time(&timevar);
 					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 						errout(hostname);
-					fprintf(fLog, "S: %s --> %s %s is unknown\n", (char *)ctime(&timevar), buf, grupo);
+					fprintf(fLog, "S: %s %s %s is unknown\n", hora, buf, grupo);
 				}
 				else
 				{
 					strcpy(buf, "211\r\n");
 					time(&timevar);
-					fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+					fprintf(fLog, "S: %s %s", hora, buf);
 					if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 						errout(hostname);
 
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 211 %s", (char *)ctime(&timevar), lineaux);
+					fprintf(fLog, "S: %s 211 %s", hora, lineaux);
 					if (send(s, lineaux, TAM_COMANDO, 0) != TAM_COMANDO)
 						errout(hostname);
 				}
@@ -1048,7 +1045,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					//printf("Uso: Uso: <article> <numero_articulo>\n");
 					flagError = 1;
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", (char *)ctime(&timevar));
+					fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", hora);
 				}
 			}
 			else
@@ -1057,13 +1054,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				//printf("Uso: <article> <numero_articulo>\n");
 				flagError = 1;
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", hora);
 			}
 			if (flagError == 1) // Si esta mal escrito.
 			{
 				strcpy(buf, "501\r\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <article> <numero_articulo>\n", hora);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 			}
@@ -1074,7 +1071,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				//printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 			}
 			else
 			{
@@ -1096,7 +1093,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						errout(hostname);
 					//printf("423 No existe ese articulo en %s.%s\n", grusub, grusub1);
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 423 No existe ese articulo en %s.%s\n", (char *)ctime(&timevar), grusub, grusub1);
+					fprintf(fLog, "S: %s 423 No existe ese articulo en %s.%s\n", hora, grusub, grusub1);
 				}
 				else
 				{
@@ -1129,7 +1126,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							errout(hostname);
 						//printf("\n223 %0.10d %s articulo recuperado\n\n", token3, numeroId);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 223 %d %s recuperado \n", (char *)ctime(&timevar), token3, numeroId);
+						fprintf(fLog, "S: %s 223 %d %s recuperado \n", hora, token3, numeroId);
 						sprintf(comandoaux, "223 %d %s articulo recuperado\n", token3, numeroId);
 						if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
 							errout(hostname);
@@ -1141,7 +1138,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								errout(hostname);
 
 							time(&timevar);
-							fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineanoticia);
+							fprintf(fLog, "S: %s %s\n", hora, lineanoticia);
 
 							if (strcmp(lineanoticia, ".\r\n") == 0)
 							{
@@ -1157,7 +1154,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							errout(hostname);
 						//printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 					}
 					fclose(noticia);
 					memset(comandoaux, '\0', sizeof(comandoaux));
@@ -1191,7 +1188,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					//printf("Uso: Uso: <article> <numero_articulo>\n");
 					flagError = 1;
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", (char *)ctime(&timevar));
+					fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", hora);
 				}
 			}
 			else
@@ -1200,13 +1197,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				//printf("Uso: <article> <numero_articulo>\n");
 				flagError = 1;
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", hora);
 			}
 			if (flagError == 1) // Si esta mal escrito.
 			{
 				strcpy(buf, "501\r\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <head> <numero_articulo>\n", hora);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 			}
@@ -1217,7 +1214,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					errout(hostname);
 				//printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 			}
 			else
 			{
@@ -1239,7 +1236,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						errout(hostname);
 					//printf("423 No existe ese articulo en %s.%s\n", grusub, grusub1);
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 423 No existe ese articulo en %s.%s\n", (char *)ctime(&timevar), grusub, grusub1);
+					fprintf(fLog, "S: %s 423 No existe ese articulo en %s.%s\n", hora, grusub, grusub1);
 				}
 				else
 				{
@@ -1271,7 +1268,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 							errout(hostname);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 221 %d %s cabecera del articulo recuperada \n", (char *)ctime(&timevar), token3, numeroId);
+						fprintf(fLog, "S: %s 221 %d %s cabecera del articulo recuperada \n", hora, token3, numeroId);
 						sprintf(comandoaux, "221 %d %s cabecera del articulo recuperada\n", token3, numeroId);
 						if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
 							errout(hostname);
@@ -1283,7 +1280,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								errout(hostname);
 
 							time(&timevar);
-							fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineanoticia);
+							fprintf(fLog, "S: %s %s\n", hora, lineanoticia);
 							if (strncmp(lineanoticia, "\r\n", 2) == 0)
 							{
 								memset(lineanoticia, '\0', sizeof(lineanoticia));
@@ -1300,13 +1297,12 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							errout(hostname);
 						//printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 					}
 					fclose(noticia);
 					memset(comandoaux, '\0', sizeof(comandoaux));
 				}
 			}
-		
 		}
 		//######## BODY ###########
 		else if ((strncmp(comando, "BODY\r\n", 4) == 0) || (strncmp(comando, "body\r\n", 4) == 0))
@@ -1336,7 +1332,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					//printf("Uso: Uso: <article> <numero_articulo>\n");
 					flagError = 1;
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", (char *)ctime(&timevar));
+					fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", hora);
 				}
 			}
 			else
@@ -1345,13 +1341,13 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				//printf("Uso: <article> <numero_articulo>\n");
 				flagError = 1;
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", hora);
 			}
 			if (flagError == 1) // Si esta mal escrito.
 			{
 				strcpy(buf, "501\r\n");
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", hora);
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 			}
@@ -1361,7 +1357,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 					errout(hostname);
 				time(&timevar);
-				fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+				fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 			}
 			else
 			{
@@ -1383,7 +1379,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						errout(hostname);
 					//printf("423 No existe ese articulo en %s.%s\n", grusub, grusub1);
 					time(&timevar);
-					fprintf(fLog, "S: %s --> 423 No existe ese articulo en %s.%s\n", (char *)ctime(&timevar), grusub, grusub1);
+					fprintf(fLog, "S: %s 423 No existe ese articulo en %s.%s\n", hora, grusub, grusub1);
 				}
 				else
 				{
@@ -1415,7 +1411,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 							errout(hostname);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 222 %d %s cuerpo del articulo recuperado \n", (char *)ctime(&timevar), token3, numeroId);
+						fprintf(fLog, "S: %s 222 %d %s cuerpo del articulo recuperado \n", hora, token3, numeroId);
 						sprintf(comandoaux, "222 %d %s cuerpo del articulo recuperado\n", token3, numeroId);
 						if (send(s, comandoaux, TAM_COMANDO, 0) != TAM_COMANDO)
 							errout(hostname);
@@ -1434,8 +1430,8 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								errout(hostname);
 
 							time(&timevar);
-							fprintf(fLog, "S: %s --> %s\n", (char *)ctime(&timevar), lineanoticia);
-							
+							fprintf(fLog, "S: %s %s\n", hora, lineanoticia);
+
 							memset(lineanoticia, '\0', sizeof(lineanoticia));
 						}
 					}
@@ -1447,7 +1443,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							errout(hostname);
 						//printf("\n423 El articulo %d no existe en el grupo de noticias\n", token3);
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 430 No se encuentra ese articulo\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s 430 No se encuentra ese articulo\n", hora);
 					}
 					fclose(noticia);
 					memset(comandoaux, '\0', sizeof(comandoaux));
@@ -1457,10 +1453,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		//######## POST ###########
 		else if ((strcmp(comando, "POST\r\n") == 0) || (strcmp(comando, "post\r\n") == 0))
 		{
+			flagExisteGrupo = 0;
 			n = 0;
 			strcpy(buf, "340\r\n");
 			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+			fprintf(fLog, "S: %s 340 Subiendo un artículo; finalize con una línea que solo contenga un punto", hora);
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
@@ -1498,10 +1495,11 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 				comando[len] = '\0';
 				// This sleep simulates the processing of the request that a real server might do.
 				time(&timevar);
-				fprintf(fLog, "C: %s --> %s", (char *)ctime(&timevar), comando);
+				fprintf(fLog, "C: %s %s", hora, comando);
 				if (strncmp(comando, "\r\n", 2) == 0) // Si introducimos una linea en blanco querra decir que pasamos al body por lo que pasamos el flag de 0 a 1.
 				{
 					flag = 1;
+					
 					if (flagHeader == 2)
 					{
 						time(&now);
@@ -1531,10 +1529,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					if (separator == NULL)
 					{
 						time(&timevar);
-						fprintf(fLog, "S: %s --> 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", (char *)ctime(&timevar));
+						fprintf(fLog, "S: %s 501 Error de sintaxis. Uso: <body> <numero_articulo>\n", hora);
 						// Enviar codigo de error al cliente.
 					}
-					if ((strncmp(separator, "Newsgroups:", strlen(separator)) == 0 || strncmp(separator, "newsgroups:", strlen(separator)) == 0) && flagHeader == 0)
+					else if ((strncmp(separator, "Newsgroups:", strlen(separator)) == 0 || strncmp(separator, "newsgroups:", strlen(separator)) == 0) && flagHeader == 0)
 					{
 						separator = strtok(NULL, " "); // Avanzamos para ver el grupo que ha mandado el cliente.
 						flagExisteGrupo = 0;
@@ -1543,17 +1541,16 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						if (grupos == NULL)
 						{
 							printf("No se ha podido leer el fichero grupos");
-							fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+							fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 							// Mandar mensaje de error al cliente.
 						}
 						while (fgets(linea, TAM_COMANDO, (FILE *)grupos))
 						{
 							separator1 = strtok(linea, " "); // Grupo en el fichero
-							//fprintf(stdout, "Se esta comparando : (c)%s -- > (s)%s\n", separator, separator1);
+							
 							if (strncmp(separator, separator1, strlen(separator1)) == 0)
 							{
 								strcpy(grupo_aux, separator1);
-
 								flagExisteGrupo = 1;
 								break;
 							}
@@ -1566,7 +1563,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 						}
 						else
 						{
-							//printf("Grupo no encontrado\n");
+							printf("Grupo no encontrado\n");
 						}
 					}
 					else if ((strncmp(comando, "Subject:", 8) == 0 || strncmp(comando, "subject:", 8) == 0) && flagHeader == 1)
@@ -1589,12 +1586,14 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 					}
 					if (strncmp(comando, ".\r\n", 3) == 0)
 					{
+						
 						num_lineas = 0;
 						if (flagHeader != 2)
 						{ // Quiere decir que el articulo no esta correcto por eso enviamos un 441. Habria que controlar en el cliente que pasa si recibe un 441
+							
 							strcpy(buf, "441\r\n");
 							time(&timevar);
-							fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+							fprintf(fLog, "S: %s 441 No existe ese grupo de noticias", hora);
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
 						}
@@ -1608,7 +1607,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							if (f == NULL)
 							{
 								printf("Error al abrir el fichero.\n");
-								fprintf(fLog, "S: %s --> Error al abrir el fichero.\n", (char *)ctime(&timevar));
+								fprintf(fLog, "S: %s Error al abrir el fichero.\n", hora);
 							}
 							fscanf(f, "%d", &num_art);
 							num_art++;
@@ -1630,7 +1629,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 							if (grupos == NULL)
 							{
 								printf("No se ha podido leer el fichero grupos\n");
-								fprintf(fLog, "S: %s --> No se ha podido leer el fichero grupos\n", (char *)ctime(&timevar));
+								fprintf(fLog, "S: %s No se ha podido leer el fichero grupos\n", hora);
 								// Mandar mensaje de error al cliente.
 							}
 							rewind(grupos);
@@ -1644,25 +1643,30 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								{
 									separator1 = strtok(NULL, " ");
 									n = atoi(separator1);
+									
 									n++;
 									sprintf(num_aux, "%.10d", n);
+									
 									int flagCopia = 0;
 									for (int i = 0; i < strlen(lineaux); i++)
 									{
-										if (lineaux[i] == ' ')
+										if (lineaux[i] == ' ' && flagCopia == 0)
 										{
 											for (int j = 0; j < strlen(num_aux); j++)
 											{
 												i++;
 												lineaux[i] = num_aux[j];
 											}
-											break;
+											
+											flagCopia = 1;
 										}
 									}
+									
 									break;
 								}
 							}
 							fseek(grupos, -(strlen(lineaux)), SEEK_CUR);
+							fprintf(grupos, "%s", lineaux);
 							fclose(grupos);
 							/* Fin de editar numero de articulos y escribir.*/
 
@@ -1675,18 +1679,19 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 								}
 							}
 							sprintf(ruta, "./noticias/articulos/%s/%d", grupo_aux, n);
+							
 							f = fopen(ruta, "w");
 							if (f == NULL)
 							{
 								printf("Error al crear el fichero\n");
-								fprintf(fLog, "S: %s --> Error al crear el fichero\n", (char *)ctime(&timevar));
+								fprintf(fLog, "S: %s Error al crear el fichero\n", hora);
 							}
 							fprintf(f, "%s%s", header, body);
 							fclose(f);
 							/* Fin de creacion del articulo */
 							strcpy(buf, "240\r\n");
 							time(&timevar);
-							fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+							fprintf(fLog, "S: %s 240 Articulo recibido correctamente\n", hora);
 							if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 								errout(hostname);
 						}
@@ -1703,7 +1708,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 			// Enviar mensaje de salida del cliente.
 			strcpy(buf, "205\r\n");
 			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+			fprintf(fLog, "S: %s 205 ADIOS!\n", hora);
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
 				errout(hostname);
 
@@ -1714,7 +1719,7 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		{
 			strcpy(buf, "500\r\n");
 			time(&timevar);
-			fprintf(fLog, "S: %s --> %s", (char *)ctime(&timevar), buf);
+			fprintf(fLog, "S: %s %s", hora, buf);
 			printf("500 Comando no reconocido\n");
 			//printf("No se ha recibido un POST\n");
 			if (send(s, buf, TAM_BUFFER, 0) != TAM_BUFFER)
@@ -1743,10 +1748,10 @@ void serverTCP(int s, struct sockaddr_in clientaddr_in)
 		 * that does require it.
 		 */
 	printf("Completed %s port %u, %d requests, at %s\n",
-		   hostname, ntohs(clientaddr_in.sin_port), reqcnt, (char *)ctime(&timevar));
+		   hostname, ntohs(clientaddr_in.sin_port), reqcnt, hora);
 
-	fprintf(fLog, "Completed %s port %u, %d requests, at %s\n", hostname, ntohs(clientaddr_in.sin_port), reqcnt, (char *)ctime(&timevar));
-	//fclose(fLog);
+	fprintf(fLog, "Completed %s port %u, %d requests, at %s\n\n\n\n", hostname, ntohs(clientaddr_in.sin_port), reqcnt, hora);
+	fclose(fLog);
 }
 
 /*

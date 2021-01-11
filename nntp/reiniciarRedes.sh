@@ -2,5 +2,5 @@
 pkill -9 servidor
 make
 ./servidor
-./cliente localhost TCP
+./cliente localhost TCP ../ordenes/ordenes/ordenes3
 

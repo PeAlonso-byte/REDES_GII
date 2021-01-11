@@ -34,7 +34,7 @@ void handler()
     printf("Alarma recibida \n");
 }
 
-void clienteTCP(char *, char *);
+void clienteTCP(char *, char *, char *);
 void clienteUDP(char *, char *);
 
 int main(int argc, char *argv[])
@@ -44,9 +44,9 @@ int main(int argc, char *argv[])
         argv[1]=localhost
         argv[2]=TCP/UDP
     */
-    if (argc != 3)
+    if (argc != 4)
     {
-        fprintf(stderr, "Uso: %s <nombre_IP_servidor> <protocolo>\n", argv[0]);
+        fprintf(stderr, "Uso: %s <nombre_IP_servidor> <protocolo> <fichero> \n", argv[0]);
         exit(1);
     }
     else
@@ -54,7 +54,7 @@ int main(int argc, char *argv[])
         /*Comprobamos si es un cliente TCP o UDP*/
         if (0 == strncmp(argv[2], "TCP", 3))
         {
-            clienteTCP(argv[0], argv[1]);
+            clienteTCP(argv[0], argv[1], argv[3]);
         }
         else if (0 == strncmp(argv[2], "UDP", 3))
         {
@@ -364,7 +364,7 @@ default: // Father process.
 
 } // Fin UDP
 
-void clienteTCP(char *cliente, char *servidor)
+void clienteTCP(char *cliente, char *servidor, char *rutaOrdenes)
 {
     int s; /* connected socket descriptor */
     struct addrinfo hints, *res;
@@ -376,25 +376,16 @@ void clienteTCP(char *cliente, char *servidor)
     /* This example uses TAM_BUFFER byte messages. */
     char buf[TAM_BUFFER];
     //char newgroups[TAM_NG];
-    FILE *ficheroLog;
+    FILE *ficheroLog, *ordenes;
     char lineaInfo[TAM_COMANDO];
     char *divide;
     char grupo[100];
-    /*
-    FILE *entrada, *salida;
-    char buf[TAM_BUFFER];
-    char exitFileName[100];
 
-    int tmp;
-
-    entrada = fopen(nombre_fichero, "r");
-    if (NULL == entrada)
-    {
-        fprintf(stderr, "El fichero de ordenes %s no se ha podido abrir\n", nombre_fichero);
-        fflush(stderr);
-        exit(1);
+    ordenes = fopen(rutaOrdenes, "r");
+    if (ordenes == NULL) {
+        fprintf(stdout, "Error al abrir el fichero de ordenes\n");
+        return;
     }
-    */
 
     // Creamos el socket TCP local
     s = socket(AF_INET, SOCK_STREAM, 0);
@@ -480,6 +471,7 @@ void clienteTCP(char *cliente, char *servidor)
 	 */
     char nombrePuerto[50];
     sprintf(nombrePuerto, "%u.txt", ntohs(myaddr_in.sin_port));
+    
     ficheroLog = fopen(nombrePuerto, "w");
 
     if (ficheroLog == NULL)
@@ -489,6 +481,8 @@ void clienteTCP(char *cliente, char *servidor)
     }
     fprintf(ficheroLog, "Connected to %s on port %u at %s\n", servidor, ntohs(myaddr_in.sin_port), (char *)ctime(&timevar));
 
+    
+    
     /* PRUEBA COMANDO POST */
     char comando[TAM_COMANDO] = ""; // Comando indica el comando que vas a enviar y buf recibe el codigo del servidor.
     char comandoaux[TAM_COMANDO] = "";
@@ -497,8 +491,15 @@ void clienteTCP(char *cliente, char *servidor)
         memset(comando, '\0', sizeof(comando));
         memset(comandoaux, '\0', sizeof(comandoaux));
         memset(lineaInfo, '\0', sizeof(lineaInfo));
+
         printf("Escribe el comando que deseas enviar al servidor: \n");
-        fgets(comando, TAM_COMANDO, stdin);
+
+        // Descomentar esto para hacerlo por fichero.
+        fgets(comando, TAM_COMANDO, (FILE *)ordenes);
+
+        // Comentar esto para hacerlo con fichero
+        //fgets(comando, TAM_COMANDO, stdin);
+        // ---------------------------------------
 
         // CODIGO PARA AÑADIR EL \R\N A LOS COMANDOS
 
@@ -581,10 +582,12 @@ void clienteTCP(char *cliente, char *servidor)
         //######## NEWGROUPS ###########
         else if ((strncmp(comando, "NEWGROUPS", 9) == 0) || (strncmp(comando, "newgroups", 9) == 0))
         {
+            memset(comandoaux, '\0', sizeof(comandoaux));
             if (strcmp(buf, "231\r\n") == 0)
             {
-                printf("231 list of new newsgroups follows\n");
-                fprintf(ficheroLog, "S: 231 list of new newsgroups follows");
+                recv(s, comandoaux, TAM_COMANDO, 0);
+                fprintf(stdout, "%s", comandoaux);
+                fprintf(ficheroLog, "S: %s", comandoaux);
 
                 while (1)
                 {
@@ -615,21 +618,40 @@ void clienteTCP(char *cliente, char *servidor)
         //######## NEWNEWS ###########
         else if ((strncmp(comando, "NEWNEWS", 7) == 0) || (strncmp(comando, "newnews", 7) == 0))
         {
-            /*if (strcmp(buf, "230\r\n") == 0)
+            memset(comandoaux, '\0', sizeof(comandoaux));
+            memset(lineaInfo, '\0', sizeof(lineaInfo));
+            if (strcmp(buf, "230\r\n") == 0)
             {
-                printf("Recibiendo correctamente 230\n");
-            }*/
+                recv(s, comandoaux, TAM_COMANDO, 0);
+                fprintf(stdout, "%s", comandoaux);
+                fprintf(ficheroLog, "S: %s", comandoaux);
 
-            //printf("\nEnvío desde cliente:%s\n", comando);
+                while (1)
+                {
+                    recv(s, lineaInfo, TAM_COMANDO, 0); // Leemos infinitamente hasta que encontremos un . solo.
+                    fprintf(stdout, "%s", lineaInfo);
+                    fprintf(ficheroLog, "S: %s", lineaInfo);
 
-            if (send(s, comando, TAM_COMANDO, 0) != TAM_COMANDO)
-            {
-                fprintf(stderr, "%s: Connection aborted on error ", cliente);
-                fprintf(stderr, "on send number %d\n", i);
-                fprintf(ficheroLog, "%s: Connection aborted on error ", cliente);
-                fprintf(ficheroLog, "on send number %d\n", i);
-                exit(1);
+                    if (strncmp(lineaInfo, ".\r\n", 3) == 0)
+                    {
+                        break;
+                    }
+                }
             }
+            else if (strcmp(buf, "501\r\n") == 0)
+            {
+
+                printf("\n501 Error de sintaxis. ");
+                printf("Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+                fprintf(ficheroLog, "S: 501 Error de sintaxis. Uso: <newgroups> <YYMMDD> <HHMMSS>\n");
+            }
+            else
+            {
+                fprintf(stdout, "%s\n", buf);
+                printf("Error al abrir el fichero de grupos.\n");
+                fprintf(ficheroLog, "S: Error al abrir el fichero de grupos.\n");
+            }
+
         }
         //######## GROUP ###########
         else if ((strncmp(comando, "GROUP", 5) == 0) || (strncmp(comando, "group", 5) == 0))
@@ -793,7 +815,7 @@ void clienteTCP(char *cliente, char *servidor)
             }
         }
         //######## POST ###########
-        else if ((strcmp(comando, "POST") == 0) || (strcmp(comando, "post") == 0))
+        else if ((strncmp(comando, "POST", 4) == 0) || (strncmp(comando, "post", 4) == 0))
         {
             if (strcmp(buf, "340\r\n") == 0)
             { // Se puede realizar el post.
@@ -803,12 +825,13 @@ void clienteTCP(char *cliente, char *servidor)
                 // Vamos a enviar bloques de 510 caracteres, hasta que pongamos un solo punto que indicará el fin de envío.
                 while (strcmp(comando, ".\r\n") != 0)
                 {
-                    int lon = strlen(comando);
-                    for (int k = 0; k < lon; k++)
-                    {
-                        comando[k] = '\0';
-                    }
-                    fgets(comando, TAM_COMANDO, stdin);
+                    memset(comando, '\0', sizeof(comando));
+                    /* -------------------------------------------------------------------------------- */
+                    
+                    //fgets(comando, TAM_COMANDO, stdin); // Comentar esto para hacerlo con ficheros.
+                    fgets(comando, TAM_COMANDO, (FILE*)ordenes); // Descomentar esto para hacerlo con ficheros.
+
+                    /* ---------------------------------------------------------------------------------------- */
 
                     // Formateamos el comando para que acabe en /r/n
                     i = 0;
@@ -834,7 +857,7 @@ void clienteTCP(char *cliente, char *servidor)
                     }
                 }
 
-                //f = fopen
+             
 
                 // Aqui tenemos que esperar a que el servidor nos envie si se ha publicado con exito o no.
                 i = recv(s, buf, TAM_BUFFER, 0);
@@ -868,5 +891,5 @@ void clienteTCP(char *cliente, char *servidor)
     time(&timevar);
     fprintf(stdout, "\n\nAll done at %s", (char *)ctime(&timevar));
     fprintf(ficheroLog, "\n\nAll done at %s", (char *)ctime(&timevar));
-    //fclose(ficheroLog);
+    fclose(ficheroLog);
 } // Fin TCP
